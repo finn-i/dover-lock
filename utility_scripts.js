@@ -293,7 +293,6 @@ function loadTKMetadataSet(lang, type) {
 var wavesurfer;
 
 function loadAudio(audio, sectionData) {
-   // console.log('loadAudio')
    let editMode = false;
    let currentRegion = {speaker: '', start: '', end: ''};
    let currentRegions = [];
@@ -306,7 +305,6 @@ function loadAudio(audio, sectionData) {
 
    let dualMode = false;
    let secondaryLoaded = false;
-   let selectedVersions = ['current'];
 
    let waveformCursorX = 0;
    let snappedToX = 0;
@@ -323,15 +321,9 @@ function loadAudio(audio, sectionData) {
    let tempZoomSave = 0;
    let isZooming;
 
-   let canvasImages = {}; // stores canvas images of each version for fast loading from cache
-
    let accentColour = "#66d640";
    // let accentColour = "#F8C537";
    let regionTransparency = "50";
-   let colourbrewerSet = colorbrewer.Set2[8];
-   let regionColourSet = [];
-
-   const mod_meta_base_url = gs.xsltParams.library_name + "?a=g&rt=r&ro=0&s=ModifyMetadata&s1.collection=" + gs.cgiParams.c + "&s1.site=" + gs.xsltParams.site_name + "&s1.d=" + gs.cgiParams.d;
 
    let waveformContainer = document.getElementById("waveform");
    
@@ -343,17 +335,13 @@ function loadAudio(audio, sectionData) {
       waveColor: "white",
       progressColor: accentColour,
       // progressColor: "grey",
-      // barWidth: 1,
+      // barWidth: 2,
       barHeight: 1.2,
       // barGap: 2,
       // barRadius: 1,
-      height: 140,
       cursorColor: 'black',
-      maxCanvasWidth: 32000,
-      minPxPerSec: 25,
-      // normalize: true, // normalizes by maximum peak
-      // partialRender: true, // use the PeakCache to improve rendering speed of large waveforms
-      pixelRatio: 1, // 1 results in faster rendering
+      cursorWidth: 2,
+      normalize: true, // normalizes by maximum peak
       plugins: [
          WaveSurfer.regions.create({
             // formatTimeCallback: function(a, b) {
@@ -393,6 +381,8 @@ function loadAudio(audio, sectionData) {
       if (!editMode) { // play region audio on click
          wavesurfer.play(region.start); // plays from start of region
       } else { // select or deselect current region
+         // if (region.element.classList.contains("region-top")) caretClicked("primary-caret");
+         // else if (region.element.classList.contains("region-bottom")) caretClicked("secondary-caret");
          if (region.element.classList.contains("region-top")) {
             currSpeakerSet = primarySet;
             swapCarets(true);
@@ -408,8 +398,9 @@ function loadAudio(audio, sectionData) {
                // removeCurrentRegion(); // deselect current region on click
             } else {
                currentRegion = region;
-               currentRegion.speaker = currentRegion.attributes.label.innerText;
-               wavesurfer.backend.seekTo(currentRegion.start);
+               currentRegion.speaker = currentRegion.attributes.label.innerHTML;
+               region.play(); // start and stop to move play cursor to beginning of region
+               wavesurfer.playPause();
             }
          } else if (e.ctrlKey) { // control was held during click
             if (currentRegions.length == 0 && isCurrentRegion(region)) {
@@ -419,17 +410,18 @@ function loadAudio(audio, sectionData) {
                if (removeIndex != -1) currentRegions.splice(removeIndex, 1);
                if (currentRegions.length > 0 && isCurrentRegion(region)) { // change current region if removed
                   currentRegion = currentRegions[0];
+                  // currentRegions = [];
                }
             } else {
                if (currentRegions.length < 1) currentRegions.push(currentRegion);
                if (getIndexInCurrentRegions(region) == -1) currentRegions.push(region); // add if it doesn't already exist
                currentRegion = region;
-               currentRegion.speaker = currentRegion.attributes.label.innerText;
-               wavesurfer.backend.seekTo(currentRegion.start); 
+               currentRegion.speaker = currentRegion.attributes.label.innerHTML;
+               region.play();
+               wavesurfer.playPause();
             }
             if (currentRegions.length == 1)  currentRegions = []; // clear selected regions if there is only one
          } else if (e.shiftKey) { // shift was held during click
-            clearChapterSearch();
             if (getCurrentRegionIndex() != -1 && getIndexOfRegion(region) != -1) {
                if (currentRegions && currentRegions.length > 0) {
                   if (Math.max(...getCurrentRegionsIndexes()) < getIndexOfRegion(region)) { // shifting forwards / down
@@ -453,8 +445,8 @@ function loadAudio(audio, sectionData) {
 
    function getIndexInCurrentRegions(region) {
       for (const reg of currentRegions) {
-         const regSpeaker = reg.attributes ? reg.attributes.label.innerText : reg.speaker;
-         if (reg.start == region.start && reg.end == region.end && regSpeaker == region.attributes.label.innerText) {
+         const regSpeaker = reg.attributes ? reg.attributes.label.innerHTML : reg.speaker;
+         if (reg.start == region.start && reg.end == region.end && regSpeaker == region.attributes.label.innerHTML) {
             return currentRegions.indexOf(reg);
          }
       }
@@ -463,7 +455,7 @@ function loadAudio(audio, sectionData) {
 
    function getIndexOfRegion(region) {
       for (const reg of currSpeakerSet.tempSpeakerObjects) {
-         if (reg.start == region.start && reg.end == region.end && reg.speaker == region.attributes.label.innerText) {
+         if (reg.start == region.start && reg.end == region.end && reg.speaker == region.attributes.label.innerHTML) {
             return currSpeakerSet.tempSpeakerObjects.indexOf(reg);
          }
       }
@@ -473,231 +465,95 @@ function loadAudio(audio, sectionData) {
    wavesurfer.on('region-mouseenter', function(region) { // region hover effects
       if (!mouseDown) {
          handleRegionColours(region, true); 
-         setHoverSpeaker(region.element.style.left, region.attributes.label.innerText);
+         hoverSpeaker.innerHTML = region.attributes.label.innerHTML;  
+         hoverSpeaker.style.marginLeft = parseInt(region.element.style.left.slice(0, -2)) - waveform.scrollLeft + "px";
          if (!isInCurrentRegions(region)) {
             removeRegionBounds();
-            drawRegionBounds(region, wave.scrollLeft, "black");
+            drawRegionBounds(region, waveform.scrollLeft, "black");
          }
-         if (isCurrentRegion(region) && editMode) drawRegionBounds(region, wave.scrollLeft, "FireBrick");
+         if (isCurrentRegion(region) && editMode) drawRegionBounds(region, waveform.scrollLeft, "FireBrick");
       }
    });
-
-   function setHoverSpeaker(offset, name) {
-      hoverSpeaker.innerHTML = name;  
-      let newOffset = parseInt(offset.slice(0, -2)) - wave.scrollLeft;
-      // if (newOffset < 0) newOffset = 0;
-      hoverSpeaker.style.marginLeft = newOffset + "px";
-   }
-
    wavesurfer.on('region-mouseleave', function(region) { 
-      hoverSpeaker.innerHTML = "";
       if (!mouseDown) {
          if (!(wavesurfer.getCurrentTime() <= region.end && wavesurfer.getCurrentTime() >= region.start)) handleRegionColours(region, false); 
          if (!editMode) hoverSpeaker.innerHTML = "";
          removeRegionBounds();
          if (currentRegion.speaker && getCurrentRegionIndex() != -1) { 
-            setHoverSpeaker(currSpeakerSet.tempSpeakerObjects[getCurrentRegionIndex()].region.element.style.left, currentRegion.speaker);
+            hoverSpeaker.innerHTML = currentRegion.speaker;
+            hoverSpeaker.style.marginLeft = parseInt(currSpeakerSet.tempSpeakerObjects[getCurrentRegionIndex()].region.element.style.left.slice(0, -2)) - waveform.scrollLeft + "px";
             drawCurrentRegionBounds();
          } 
+         // if (!currentRegion.speaker || !regionsMatch(region, currentRegion)) hoverSpeaker.innerHTML = "";
       }
    });
    wavesurfer.on('region-in', function(region) { 
-      if (!mouseDown) {
-         handleRegionColours(region, true); 
-         if (itemType == "chapter" && Array.from(chapters.children)[getIndexOfRegion(region)]) {
-            Array.from(chapters.children)[getIndexOfRegion(region)].scrollIntoView({  
-               behavior: "smooth",
-               block: "nearest"
-            });
-         }
+      handleRegionColours(region, true); 
+      if (itemType == "chapter") {
+         document.getElementById("chapter" + region.id.replace("region", "")).scrollIntoView({
+            behavior: "smooth",
+            block: "nearest"
+         });
       }
    });
    wavesurfer.on('region-out', function(region) { handleRegionColours(region, false) });
    wavesurfer.on('region-update-end', handleRegionEdit); // end of click-drag event
    wavesurfer.on('region-updated', handleRegionSnap);
 
-   // let loader = document.createElement("span"); // loading audio element
-   // loader.innerHTML = "Loading audio";
-   // loader.id = "waveform-loader";
-   // document.querySelector("#waveform wave").prepend(loader);
+   let loader = document.createElement("span"); // loading audio element
+   loader.innerHTML = "Loading audio";
+   loader.id = "waveform-loader";
+   document.querySelector("#waveform wave").prepend(loader);
 
-   let loader = document.getElementById('waveform-loader');
-   let waveformSpinner = document.getElementById('waveform-blocker');
-
-   let initialLoad = true;
-
-   wavesurfer.on('error', error => console.log(error));
-   
    wavesurfer.on('waveform-ready', function() { // retrieve regions once waveforms have loaded
-      // window.alert("foo");
-      // wavesurfer.zoom(Number(zoomSlider.value / 4)); // set default zoom point
-      // zoomSlider.dispatchEvent(new Event("input"));
-      window.onbeforeunload = (e) => {
-         if (undoStates.length > 0) {
-            e.returnValue = "Data will be lost if you leave the page, are you sure?";
-            return "Data will be lost if you leave the page, are you sure?";
-         }
-      };    
-      if (document.getElementById('new-canvas')) document.getElementById('new-canvas').remove();
-      setTimeout(() => {
-         zoomInButton.click();
-         zoomOutButton.click();
-         hideAudioLoader();
-      }, 100)
-      setTimeout(() => { // if not delayed exportImage does not retrieve waveform (despite being in waveform-ready?)
-         // zoomInButton.click();
-         const currVersion = selectedVersions[(!dualMode || primaryCaret.src.includes("fill")) ? 0 : 1];
-         for (let key in canvasImages) {
-            if (currVersion == key && canvasImages[key] == undefined) { canvasImages[key] = wavesurfer.exportImage() } // add waveform image to cache if one isn't already assigned to the version
-         }
-      }, 1000);
-
-      if (initialLoad) {
-         if (inputFile.endsWith("csv")) { // diarization if csv
-            itemType = "chapter";
-            if (localStorage.getItem('undoStates') && localStorage.getItem('undoLevel')) {
-               console.log('-- Loading regions from localStorage --');
-               undoStates = JSON.parse(localStorage.getItem('undoStates'));
-               undoLevel = JSON.parse(localStorage.getItem('undoLevel'));
-               primarySet.tempSpeakerObjects = undoStates[undoLevel].state;
-               primarySet.uniqueSpeakers = [];
-               for (const item of primarySet.tempSpeakerObjects) {
-                  if (!primarySet.uniqueSpeakers.includes(item.speaker)) primarySet.uniqueSpeakers.push(item.speaker);
-               }
-               populateChapters(primarySet);
-               if (undoStates[undoLevel].secState && undoStates[undoLevel].secState.length > 0) {
-                  secondarySet.tempSpeakerObjects = undoStates[undoLevel].secState;
-                  secondarySet.uniqueSpeakers = [];
-                  for (const item of secondarySet.tempSpeakerObjects) {
-                     if (!secondarySet.uniqueSpeakers.includes(item.speaker)) secondarySet.uniqueSpeakers.push(item.speaker);
-                  }
-                  secondaryLoaded = true;
-               }
-               updateRegionEditPanel(); 
-            } else {
-               loadCSVFile(inputFile, ["speaker", "start", "end"], primarySet);
-               dualModeChanged(true, "true");
-               
-               setTimeout(()=>{
-                  dualModeChanged(true, "false");
-               }, 150)
+      if (inputFile.endsWith("csv")) { // diarization if csv
+         itemType = "chapter";
+         if (localStorage.getItem('undoStates') && localStorage.getItem('undoLevel')) {
+            console.log('-- Loading regions from localStorage --');
+            undoStates = JSON.parse(localStorage.getItem('undoStates'));
+            undoLevel = JSON.parse(localStorage.getItem('undoLevel'));
+            primarySet.tempSpeakerObjects = undoStates[undoLevel].state;
+            primarySet.uniqueSpeakers = [];
+            for (const item of primarySet.tempSpeakerObjects) {
+               if (!primarySet.uniqueSpeakers.includes(item.speaker)) primarySet.uniqueSpeakers.push(item.speaker);
             }
-         } else if (inputFile.endsWith("json")) { // transcription if json
-            itemType = "word";
-            loadJSONFile(inputFile);
-         } else {                      
-            console.log("Filetype of " + inputFile + " not supported.")
-         }
-         
-         chapters.style.cursor = "default"; // remove load cursor
-         wave.className = "audio-scroll";
-         $.ajax({
-            type: "GET",
-            url: gs.variables.metadataServerURL,
-            data: { a: 'get-fldv-info', site: gs.xsltParams.site_name, c: gs.cgiParams.c, d: gs.cgiParams.d },
-            dataType: "json",
-         }).then(data => {
-            for (const version of ["current", ...data]) {
-               canvasImages[version] = undefined;
-               let menuItem = document.createElement("div");
-               menuItem.classList.add("version-select-menu-item");
-               menuItem.id = version;
-               let text = version.includes("nminus") ? version.replace("nminus-", "Previous(") + ")" : version;
-               menuItem.innerText = text.charAt(0).toUpperCase() + text.slice(1);
-               menuItem.addEventListener('click', versionClicked);
-               let dataObj = { a: 'get-archives-metadata', site: gs.xsltParams.site_name, c: gs.cgiParams.c, d: gs.cgiParams.d, metaname: "commitmessage" };
-               if (version != "current") Object.assign(dataObj, {dv: version});
-               $.ajax({ // get commitmessage metadata to show as hover tooltip
-                  type: "GET",
-                  url: gs.variables.metadataServerURL,
-                  data: dataObj,
-                  dataType: "text",
-               }).then(comment => {
-                  menuItem.title = "Commit message: " + comment;
-                  versionSelectMenu.append(menuItem);
-                  [...versionSelectMenu.children].sort((a,b) => a.innerText>b.innerText?1:-1).forEach(n=>versionSelectMenu.appendChild(n)); // sort alphabetically
-               }, (error) => { console.log("get-archives-metadata error:"); console.log(error); });
+            populateChapters(primarySet);
+            if (undoStates[undoLevel].secState && undoStates[undoLevel].secState.length > 0) {
+               secondarySet.tempSpeakerObjects = undoStates[undoLevel].secState;
+               secondarySet.uniqueSpeakers = [];
+               for (const item of secondarySet.tempSpeakerObjects) {
+                  if (!secondarySet.uniqueSpeakers.includes(item.speaker)) secondarySet.uniqueSpeakers.push(item.speaker);
+               }
+               secondaryLoaded = true;
+               editButton.click(); // open edit panel and enable dual mode if secondary set was previously altered
+               dualModeCheckbox.checked = true;
+               dualModeChanged(true);
             }
-         }, (error) => { console.log("get-fldv-info error:"); console.log(error); });
-         initialLoad = false;
+            updateRegionEditPanel(); 
+         } else {
+            loadCSVFile(inputFile, ["speaker", "start", "end"], primarySet);
+            dualModeCheckbox.checked = true;
+            dualModeChanged(true);
+            
+            setTimeout(()=>{
+               dualModeCheckbox.checked = false;
+               dualModeChanged(true);
+            }, 100)
+            
+            // reloadRegionsAndChapters();
+         }
+      } else if (inputFile.endsWith("json")) { // transcription if json
+         itemType = "word";
+         loadJSONFile(inputFile);
+      } else {                      
+         console.log("Filetype of " + inputFile + " not supported.")
       }
+      
+      loader.remove(); // remove load text
+      chapters.style.cursor = "pointer"; // remove load cursor
+      waveform.className = "audio-scroll";
+      drawVersionNames(); // draw version names if editPanel is expanded
    });
-
-   function getAudioURLFromVersion(version) {
-      let base_url = gs.variables.metadataServerURL + "?a=get-archives-assocfile&site=" + gs.xsltParams.site_name + "&c=" + gs.cgiParams.c + "&d=" + gs.cgiParams.d;
-      if (version != "current") base_url += "&dv=" + version // get fldv if not current version
-      return base_url  + "&assocname=" + gs.documentMetadata.Audio;
-   }
-
-   function getCSVURLFromVersion(version) {
-      let base_url = gs.variables.metadataServerURL + "?a=get-archives-assocfile&site=" + gs.xsltParams.site_name + "&c=" + gs.cgiParams.c + "&d=" + gs.cgiParams.d;
-      if (version != "current") base_url += "&dv=" + version; // get fldv if not current version
-      return base_url  + "&assocname=" + "structured-audio.csv";
-   }
-
-   function versionClicked(e) {
-      wavesurfer.zoom();
-      let unsavedChanges = false;
-      if (undoStates.length > 0) { // only if changes have been made in track being changed FROM
-         let clickedVersionPos = e.target.parentElement.classList.contains('versionTop') ? 0 : 1;
-         for (const state of undoStates) {
-            if (state.changedTrack == selectedVersions[clickedVersionPos]) {
-               unsavedChanges = true;
-               break;
-            }
-         }
-      } 
-      if (unsavedChanges) {
-         const areYouSure = "There are unsaved changes.\nAre you sure you want to lose changes made in this version?";
-         if (window.confirm(areYouSure)) {
-            console.log('OK');
-            discardRegionChanges(true);
-            changeVersion(e);
-         } else {
-            console.log('CANCEL');
-            return;
-         }
-      } else changeVersion(e);
-   }
-
-   function changeVersion(e) {  
-      removeCurrentRegion();
-      const audio_url = getAudioURLFromVersion(e.target.id);
-      const csv_url = getCSVURLFromVersion(e.target.id);
-      versionSelectMenu.classList.remove('visible');
-      const setToUpdate = e.target.parentElement.classList.contains('versionTop') ? primarySet : secondarySet;
-      if (e.target.parentElement.classList.contains('versionTop')) {
-         if (!currSpeakerSet.isSecondary) {
-            if (dualMode) $(".region-top").remove();
-            else $(".wavesurfer-region").remove();
-            showAudioLoader();
-            if (canvasImages[e.target.id]) { // if waveform image exists in cache
-               drawImageOnWaveform(canvasImages[e.target.id]);
-            }
-            wavesurfer.load(audio_url); // load audio
-         } else {
-            $(".region-top").remove();
-         }
-         document.getElementById('track-set-label-top').children[0].innerText = e.target.id.includes("nminus") ? e.target.id.replace("nminus-", "Previous(") + ")" : "Current"; // update top label text
-         selectedVersions[0] = e.target.id; // update the selected versions
-      } else {
-         if (currSpeakerSet.isSecondary) {
-            if (dualMode) $(".region-bottom").remove();
-            else $(".wavesurfer-region").remove();
-            showAudioLoader();
-            if (canvasImages[e.target.id]) { // if waveform image exists in cache
-               drawImageOnWaveform(canvasImages[e.target.id]);
-            }
-            wavesurfer.load(audio_url);
-         } else {
-            $(".region-bottom").remove();
-         }
-         document.getElementById('track-set-label-bottom').children[0].innerText = e.target.id.includes("nminus") ? e.target.id.replace("nminus-", "Previous(") + ")" : "Current"; // update bottom label text
-         selectedVersions[1] = e.target.id;
-      }
-      // loadCSVFile(csv_url, ["speaker", "start", "end"], setToUpdate, true);
-      loadCSVFile(csv_url, [], setToUpdate, true);
-   }
    
    function downloadURI(loc, name) {
       let link = document.createElement("a");
@@ -709,14 +565,12 @@ function loadAudio(audio, sectionData) {
    // toolbar elements & event handlers
    const audioContainer = document.getElementById("audioContainer");
    const dualModeCheckbox = document.getElementById("dual-mode-checkbox");
-   const wave = document.getElementsByTagName("wave")[0];
+   const waveform = document.getElementsByTagName("wave")[0];
    const primaryCaret = document.getElementById("primary-caret");
    const secondaryCaret = document.getElementById("secondary-caret");
    const chapters = document.getElementById("chapters");
-   const chaptersContainer = document.getElementById("chapters-container");
    const editPanel = document.getElementById("edit-panel");
    const chapterButton = document.getElementById("chapterButton");
-   const chapterSearchInput = document.getElementById("chapter-search-input");
    const zoomOutButton = document.getElementById("zoomOutButton");
    const zoomSlider = document.getElementById("zoom-slider");
    const zoomInButton = document.getElementById("zoomInButton");
@@ -741,40 +595,26 @@ function loadAudio(audio, sectionData) {
    const saveButton = document.getElementById("save-button");
    const hoverSpeaker = document.getElementById("hover-speaker");
    const contextMenu = document.getElementById("context-menu");
+   const contextDelete = document.getElementById("context-menu-delete");
    const contextReplace = document.getElementById("context-menu-replace");
    const contextOverdub = document.getElementById("context-menu-overdub");
-   const contextLock = document.getElementById("context-menu-lock");
-   const contextDelete = document.getElementById("context-menu-delete");
    // const contextCopy = document.getElementById("context-menu-copy");
-   // const contextSave = document.getElementById("context-menu-save");
-   const timelineMenu = document.getElementById("timeline-menu");
-   const timelineMenuButton = document.getElementById("timeline-menu-button");
-   const timelineMenuHide = document.getElementById("timeline-menu-hide");
-   const timelineMenuDualMode = document.getElementById("timeline-menu-dualmode");
-   const timelineMenuRegionConflict = document.getElementById("timeline-menu-region");
-   const timelineMenuSpeakerConflict = document.getElementById("timeline-menu-speaker");
-   const versionSelectMenu = document.getElementById('version-select-menu');
-   const versionSelectLabels = document.querySelectorAll(".track-arrow");
-   const savePopup = document.getElementById("save-popup");
-   const savePopupBG = document.getElementById("save-popup-bg");
-   const savePopupCancel = document.getElementById("save-popup-cancel");
-   const savePopupCommit = document.getElementById("save-popup-commit");
-   const savePopupCommitMsg = document.getElementById("commit-message");
+   const contextSave = document.getElementById("context-menu-save");
+   const dualModeMenuButton = document.getElementById("dual-mode-menu-button");
+   const dualModeMenu = document.getElementById("dual-mode-menu");
 
    audioContainer.addEventListener('fullscreenchange', (e) => { fullscreenChanged() });
    audioContainer.addEventListener('contextmenu', onRightClick);
    audioContainer.addEventListener("keyup", keyUp);
    audioContainer.addEventListener("keydown", keyDown);
    dualModeCheckbox.addEventListener("change", () => { dualModeChanged() });
-   wave.addEventListener('scroll', (e) => { waveformScrolled() })
-   wave.addEventListener('mousemove', (e) => waveformCursorX = e.x);
+   waveform.addEventListener('scroll', (e) => { waveformScrolled() })
+   waveform.addEventListener('mousemove', (e) => waveformCursorX = e.x);
    primaryCaret.addEventListener("click", (e) => caretClicked(e.target.id));
    secondaryCaret.addEventListener("click", (e) => caretClicked(e.target.id));
    chapters.style.height = "0px";
-   chaptersContainer.style.height = "0px";
    editPanel.style.height = "0px";
    chapterButton.addEventListener("click", () => { toggleChapters() });
-   chapterSearchInput.addEventListener("input", chapterSearchInputChange)
    zoomOutButton.addEventListener("click", () => { zoomSlider.stepDown(); zoomSlider.dispatchEvent(new Event("input")) });
    zoomInButton.addEventListener("click", () => { zoomSlider.stepUp(); zoomSlider.dispatchEvent(new Event("input")) });
    backButton.addEventListener("click", () => { wavesurfer.skipBackward(); });
@@ -791,232 +631,40 @@ function loadAudio(audio, sectionData) {
    speakerInput.addEventListener("blur", speakerInputUnfocused);
    createButton.addEventListener("click", createNewRegion);
    removeButton.addEventListener("click", removeRegion);
-   discardButton.addEventListener("click", () => discardRegionChanges(false));
+   discardButton.addEventListener("click", discardRegionChanges);
    undoButton.addEventListener("click", undo);
    redoButton.addEventListener("click", redo);
    saveButton.addEventListener("click", saveRegionChanges);
-   document.addEventListener('click', () => { contextMenu.classList.remove('visible'); timelineMenu.classList.remove('visible'); versionSelectMenu.classList.remove('visible') });
+   document.addEventListener('click', () => contextMenu.classList.remove('visible'));
    document.addEventListener('mouseup', () => mouseDown = false);
    document.addEventListener('mousedown', (e) => { if (e.target.id !== "create-button") newRegionOffset = 0 }); // resets new region offset on click
    document.querySelectorAll('input[type=number]').forEach(e => {
       e.onchange = (e) => { changeStartEndTime(e) }; // updates speaker objects when number input(s) are changed
       e.onblur = () => { prevUndoState = "" }; 
    }); 
+   contextDelete.addEventListener("click", removeRightClicked);
    contextReplace.addEventListener("click", replaceSelected);
    contextOverdub.addEventListener("click", overdubSelected);
-   contextLock.addEventListener("click", toggleLockSelected);
-   contextDelete.addEventListener("click", removeRightClicked);
-   timelineMenu.addEventListener("click", e => e.stopPropagation());
-   timelineMenuButton.addEventListener("click", dualModeMenuToggle);
-   timelineMenuHide.addEventListener("click", timelineMenuHideClicked);
-   timelineMenuDualMode.addEventListener("click", () => { dualModeChanged() });
-   timelineMenuRegionConflict.addEventListener("click", showStartStopConflicts);
-   timelineMenuSpeakerConflict.addEventListener("click", showSpeakerNameConflicts);
-
-   savePopupCancel.addEventListener("click", toggleSavePopup)
-   savePopupCommit.addEventListener("click", commitChanges);
-   savePopupBG.addEventListener("click", toggleSavePopup);
-   versionSelectLabels.forEach(arrow => arrow.addEventListener('click', toggleVersionDropdown));
-   showAudioLoader();
-   
+   // contextCopy.addEventListener("click", copySelected);
+   contextSave.addEventListener("click", saveSelected);
+   dualModeMenuButton.addEventListener("click", dualModeMenuToggle);
+   dualModeMenuButton.addEventListener("click", dualModeMenuToggle);
 
    if (gs.variables.allowEditing === '0') { editButton.style.display = "none" }
 
-   function toggleLockSelected(e) { // lllllll 
-      e.stopPropagation();
-      if (getCurrentRegionIndex() != -1 && currentRegions.length <= 1) { // single selected
-         let currIndex = getCurrentRegionIndex();
-         currSpeakerSet.tempSpeakerObjects[currIndex].locked = !currSpeakerSet.tempSpeakerObjects[currIndex].locked;
-         if (currSpeakerSet.tempSpeakerObjects[currIndex].locked) {
-            chapters.childNodes[currIndex].childNodes[1].classList.remove('hide'); 
-            let lockedImg = document.createElement("img");
-            lockedImg.src = interface_bootstrap_images + "lock.svg";
-            currSpeakerSet.tempSpeakerObjects[currIndex].region.element.prepend(lockedImg); 
-            e.target.innerText = "Unlock Selected";
-         } else {
-            chapters.childNodes[currIndex].childNodes[1].classList.add('hide');
-            if (currSpeakerSet.tempSpeakerObjects[currIndex].region.element.getElementsByTagName("img").length > 0) currSpeakerSet.tempSpeakerObjects[currIndex].region.element.firstChild.remove();
-            e.target.innerText = "Lock Selected";
-         }
-      } else if (currentRegions.length > 1) { // multiple selected
-         for (const idx of getCurrentRegionsIndexes()) {
-            currSpeakerSet.tempSpeakerObjects[idx].locked = !currSpeakerSet.tempSpeakerObjects[idx].locked;
-            if (currSpeakerSet.tempSpeakerObjects[idx].locked) {
-               chapters.childNodes[idx].childNodes[1].classList.remove('hide'); 
-               let lockedImg = document.createElement("img");
-               lockedImg.src = interface_bootstrap_images + "lock.svg";
-               currSpeakerSet.tempSpeakerObjects[idx].region.element.prepend(lockedImg); 
-               e.target.innerText = "Unlock Selected";
-            } else {
-               chapters.childNodes[idx].childNodes[1].classList.add('hide');
-               if (currSpeakerSet.tempSpeakerObjects[idx].region.element.getElementsByTagName("img").length > 0) currSpeakerSet.tempSpeakerObjects[idx].region.element.firstChild.remove();
-               e.target.innerText = "Lock Selected";
-            }
-         }
-      }
-   }
-
-   function timelineMenuHideClicked(e) { 
-      if (!e.target.children[0].checked) {
-         e.target.children[0].checked = true;
-         timelineMenuDualMode.classList.add('disabled');
-         timelineMenuRegionConflict.classList.add('disabled');
-         timelineMenuSpeakerConflict.classList.add('disabled');
-         if (editPanel.style.height != "0px") toggleEditMode();
-         if (chapters.style.height != "0px") toggleChapters();
-         $('.wavesurfer-region').fadeOut(100);
-      }
-      else {
-         e.target.children[0].checked = false;
-         timelineMenuDualMode.classList.remove('disabled');
-         timelineMenuRegionConflict.classList.remove('disabled');
-         timelineMenuSpeakerConflict.classList.remove('disabled');
-         let fadeIn = true;
-         if (timelineMenuRegionConflict.firstElementChild.checked) {
-            showStartStopConflicts(e, true);
-            fadeIn = false;
-         }
-         if (timelineMenuSpeakerConflict.firstElementChild.checked) {
-            showSpeakerNameConflicts(e, true);
-            fadeIn = false;
-         }
-         if (fadeIn) $('.wavesurfer-region').fadeIn(100); 
-      }
-   }
-
-   function chapterSearchInputChange(e) {
-      if (e.isTrusted) { // triggered from user action
-         if (document.getElementById("chapter-alert")) document.getElementById("chapter-alert").remove();
-         let matches = 0;
-         for (const idx in chapters.children) {
-            if (chapters.children[idx].firstChild && chapters.children[idx].classList.contains("chapter") && currSpeakerSet.tempSpeakerObjects[idx]
-               && currSpeakerSet.tempSpeakerObjects[idx].region && currSpeakerSet.tempSpeakerObjects[idx].region.element) {
-               if (e.composed) removeCurrentRegion(); // composed true if called from input, false if manually triggered event
-               if (!chapters.children[idx].firstChild.innerText.toLowerCase().includes(e.target.value.toLowerCase())) {
-                  chapters.children[idx].style.display = "none";
-                  currSpeakerSet.tempSpeakerObjects[idx].region.element.style.display = "none";
-               } else {
-                  chapters.children[idx].style.display = "flex";
-                  currSpeakerSet.tempSpeakerObjects[idx].region.element.style.display = "";
-                  matches++;
-                  if (e.target.value.length > 0) { 
-                     const reg = new RegExp(e.target.value, 'gi'); // [g]lobal, [i]gnore case
-                     chapters.children[idx].firstChild.innerHTML = chapters.children[idx].firstChild.innerText.replace(reg, '<b>$&</b>'); // highlights matching text
-                  } else {
-                     chapters.children[idx].firstChild.innerHTML = chapters.children[idx].firstChild.innerText; // highlights matching text
-                  }
-               }
-            }
-         }
-         flashChapters();
-         if (matches == 0) {
-            const msg = document.createElement("span");
-            msg.innerHTML = "No Matches!";
-            msg.id = "chapter-alert";
-            chapters.prepend(msg);
-         }  
-      }
-   }
-
-   function clearChapterSearch() {
-      chapterSearchInput.value = "";
-      chapterSearchInput.dispatchEvent(new Event("input"));
-   }
-
-   function showStartStopConflicts(e, forceRun) { // hides regions that have identical start/stop time
-      removeCurrentRegion();
-      if ((dualMode && !timelineMenuRegionConflict.children[0].checked) || forceRun) {
-         timelineMenuRegionConflict.children[0].checked = true;
-         let primHide = [];
-         let secHide = [];
-         if (!timelineMenuSpeakerConflict.children[0].checked) hideAll();
-         for (const primIdx in primarySet.tempSpeakerObjects) {
-            for (const secIdx in secondarySet.tempSpeakerObjects) {
-               if (regionsMatch(primarySet.tempSpeakerObjects[primIdx], secondarySet.tempSpeakerObjects[secIdx])) { // if regions have same start/end time, hide
-                  primHide.push(primIdx);
-                  secHide.push(secIdx);
-               }
-            }
-         }
-         for (const primIdx in primarySet.tempSpeakerObjects) {
-            if (!primHide.includes(primIdx)) {
-               primarySet.tempSpeakerObjects[primIdx].region.element.style.display = "";
-               if (primaryCaret.src.includes('fill')) chapters.children[primIdx].style.display = "flex";
-            }
-         }
-         for (const secIdx in secondarySet.tempSpeakerObjects) {
-            if (!secHide.includes(secIdx)) {
-               secondarySet.tempSpeakerObjects[secIdx].region.element.style.display = "";
-               if (secondaryCaret.src.includes('fill')) chapters.children[secIdx].style.display = "flex";
-            }
-         }
-      } else {
-         timelineMenuRegionConflict.children[0].checked = false;
-         if (timelineMenuSpeakerConflict.children[0].checked) showSpeakerNameConflicts(e, true);
-         else clearConflicts();
-      }
-   }
-   
-   function showSpeakerNameConflicts(e, forceRun) { // shows regions that have identical start/stop time but different names 
-      removeCurrentRegion();
-      if ((dualMode && !timelineMenuSpeakerConflict.children[0].checked) || forceRun) {
-         timelineMenuSpeakerConflict.children[0].checked = true;
-         if (!timelineMenuRegionConflict.children[0].checked) hideAll();
-         for (const primIdx in primarySet.tempSpeakerObjects) {
-            for (const secIdx in secondarySet.tempSpeakerObjects) {
-               if (regionsMatch(primarySet.tempSpeakerObjects[primIdx], secondarySet.tempSpeakerObjects[secIdx]) &&
-               primarySet.tempSpeakerObjects[primIdx].speaker != secondarySet.tempSpeakerObjects[secIdx].speaker) { // hide if regions match but names don't
-                  primarySet.tempSpeakerObjects[primIdx].region.element.style.display = "";
-                  secondarySet.tempSpeakerObjects[secIdx].region.element.style.display = "";
-                  if (primaryCaret.src.includes('fill')) chapters.children[primIdx].style.display = "flex";
-                  else chapters.children[secIdx].style.display = "flex";
-               }
-            }
-         }
-      } else {
-         timelineMenuSpeakerConflict.children[0].checked = false;
-         if (timelineMenuRegionConflict.children[0].checked) showStartStopConflicts(e, true);
-         else clearConflicts();
-      }
-   }
-
-   function clearConflicts() {
-      for (const primIdx in primarySet.tempSpeakerObjects) {
-         for (const secIdx in secondarySet.tempSpeakerObjects) {
-            primarySet.tempSpeakerObjects[primIdx].region.element.style.display = "";
-            secondarySet.tempSpeakerObjects[secIdx].region.element.style.display = "";
-            chapters.children[primIdx].style.display = "flex";
-         }
-      }
-   }
-
-   function hideAll() {
-      for (const primIdx in primarySet.tempSpeakerObjects) {
-         for (const secIdx in secondarySet.tempSpeakerObjects) {
-            primarySet.tempSpeakerObjects[primIdx].region.element.style.display = "none";
-            secondarySet.tempSpeakerObjects[secIdx].region.element.style.display = "none";
-            chapters.children[primIdx].style.display = "none";
-         }
-      }
-   }
-
-   function dualModeMenuToggle(e) {
-      e.stopPropagation();
-      if (timelineMenu.classList.contains('visible')) {
-         timelineMenu.classList.remove('visible');
-         e.target.style.transform = 'rotate(0deg)';
-      }
-      else {
-         timelineMenu.classList.add('visible');
-         e.target.style.transform = 'rotate(-90deg)';
+   function dualModeMenuToggle() {
+      if (editMode && dualMode) {
+         if (dualModeMenu.classList.contains('visible')) dualModeMenu.classList.remove('visible');
+         else dualModeMenu.classList.add('visible');
       }
    }
 
    function handleRegionSnap(region, e) {
-      if (editMode && currentRegion && !wavesurfer.isPlaying()) { 
+      if (editMode && currentRegion) { 
          removeRegionBounds();
-         setHoverSpeaker(region.element.style.left, currentRegion.speaker);
-         drawRegionBounds(region, wave.scrollLeft, "FireBrick"); // gets set to red if currRegion
+         hoverSpeaker.innerHTML = currentRegion.speaker;
+         hoverSpeaker.style.marginLeft = parseInt(region.element.style.left.slice(0, -2)) - waveform.scrollLeft + "px";
+         drawRegionBounds(region, waveform.scrollLeft, "FireBrick"); 
          if (e && e.action === "resize" && dualMode && editMode && !ctrlDown) { // won't actuate on drag
             let oppositeSet = secondarySet; // look down
             if (currSpeakerSet.isSecondary) oppositeSet = primarySet; // look up
@@ -1071,13 +719,13 @@ function loadAudio(audio, sectionData) {
    }
 
    function removeRightClicked(e) {
-      if (!e.target.classList.contains('disabled')) {
+      if (!e.target.classList.contains('faded')) {
          removeRegion();
       }
    }
 
    function replaceSelected(e) {
-      if (!e.target.classList.contains('disabled')) {
+      if (!e.target.classList.contains('faded')) {
          let destinationSet = secondarySet; // replace down
          if (currSpeakerSet.isSecondary) destinationSet = primarySet; // replace up
          let currItems = [currentRegion];
@@ -1106,13 +754,13 @@ function loadAudio(audio, sectionData) {
    }
 
    function overdubSelected(e) {
-      if (!e.target.classList.contains('disabled')) {
+      if (!e.target.classList.contains('faded')) {
          let destinationSet = secondarySet; // replace down
          if (currSpeakerSet.isSecondary) destinationSet = primarySet; // replace up
          let backup;
          if (destinationSet.isSecondary) backup = cloneSpeakerObjectArray(primarySet.tempSpeakerObjects); // saves selected set as this process changes values in selected set (unknown reason)
          else backup = cloneSpeakerObjectArray(secondarySet.tempSpeakerObjects);
-         copySelected(e, true);
+            copySelected(e, true);
          if (!currentRegions || currentRegions.length < 1) { // overdub single
             handleSameSpeakerOverlap(getCurrentRegionIndex(), destinationSet);
          } else { // overdub multiple
@@ -1128,7 +776,7 @@ function loadAudio(audio, sectionData) {
    }
 
    function copySelected(e, skipUndoState) {
-      if (!e.target.classList.contains('disabled')) {
+      if (!e.target.classList.contains('faded')) {
          let out = -1;
          let destinationSet = secondarySet; // copy down
          if (currSpeakerSet.isSecondary) { destinationSet = primarySet } // copy up
@@ -1162,47 +810,24 @@ function loadAudio(audio, sectionData) {
    }
 
    function onRightClick(e) {
-      // showStartStopConflicts();
-      // clearConflicts();
       if (e.target.classList.contains("wavesurfer-region") && editMode) {
          e.preventDefault();
-         e.stopPropagation();
          contextMenu.classList.add("visible");
          if (e.clientX + 200 > $(window).width()) contextMenu.style.left = ($(window).width() - 220) + "px"; // ensure menu doesn't clip on right
          else contextMenu.style.left = e.clientX + "px";
          contextMenu.style.top = e.clientY + "px";
 
-         let lockConflict = false;
-         if (currentRegions.length > 1) {
-            let firstIsLocked = 0;
-            for (const reg of currentRegions) {
-               if (firstIsLocked === 0) firstIsLocked = reg.locked;
-               else if (firstIsLocked != reg.locked) lockConflict = true;
-            }
-         }
-         if (lockConflict) contextLock.classList.add('disabled');
-         else contextLock.classList.remove('disabled');
-
-         let currIndex = getCurrentRegionIndex();
-         if (currSpeakerSet.tempSpeakerObjects[currIndex].locked) {
-            contextLock.innerText = "Unlock Selected";
-            chapters.childNodes[currIndex].childNodes[1].classList.remove('hide');  
-         } else {
-            contextLock.innerText = "Lock Selected";
-            chapters.childNodes[currIndex].childNodes[1].classList.add('hide');
-         } 
-
          if (dualMode && currentRegion && currentRegion.speaker !== "") {
-            contextReplace.classList.remove('disabled');
-            contextOverdub.classList.remove('disabled');
-            // contextCopy.classList.remove('disabled');
+            contextReplace.classList.remove('faded');
+            contextOverdub.classList.remove('faded');
+            // contextCopy.classList.remove('faded');
          } else {
-            contextDelete.classList.add('disabled');
-            contextReplace.classList.add('disabled');
-            contextOverdub.classList.add('disabled');
-            // contextCopy.classList.add('disabled');
+            contextDelete.classList.add('faded');
+            contextReplace.classList.add('faded');
+            contextOverdub.classList.add('faded');
+            // contextCopy.classList.add('faded');
          }
-         if (currentRegion && currentRegion.speaker !== "") contextDelete.classList.remove('disabled');
+         if (currentRegion && currentRegion.speaker !== "") contextDelete.classList.remove('faded');
          if (dualMode) { // manipulate context texts
             const actionDirection = currSpeakerSet.isSecondary ? "Up" : "Down";
             contextReplace.innerHTML = "Replace Selected " + actionDirection;
@@ -1223,7 +848,7 @@ function loadAudio(audio, sectionData) {
       if (e.key == "Control") ctrlDown = false;
       if (e.target.tagName !== "INPUT") {
          if (e.code === "Backspace" || e.code === "Delete") removeRegion();
-         else if (e.code === "Space") { wavesurfer.playPause(); }
+         else if (e.code === "Space") wavesurfer.playPause();
          else if (e.code === "ArrowLeft") wavesurfer.skipBackward();
          else if (e.code === "ArrowRight") wavesurfer.skipForward();
       }
@@ -1233,40 +858,28 @@ function loadAudio(audio, sectionData) {
 
    function keyDown(e) {
       if (e.key == "Control") ctrlDown = true;
-      if (e.code == "Space" && e.target.tagName.toLowerCase() != "input") e.preventDefault();
    }
 
-   function dualModeChanged(skipUndoState, overrideValue) { // on dualmode checkbox value change
-      if (overrideValue) dualModeCheckbox.checked = overrideValue == "true" ? true : false;
-      else dualModeCheckbox.checked = !dualModeCheckbox.checked; // toggle dual mode checkbox
+   function dualModeChanged(skipUndoState) { // on dualmode checkbox value change
       dualMode = dualModeCheckbox.checked; 
       currSpeakerSet = primarySet;
+      // removeCurrentRegion();
       if (!dualMode) removeCurrentRegion();
-      clearChapterSearch();
       reloadRegionsAndChapters();
       if (dualMode) {
+         dualModeMenuButton.classList.add('visible');
          if (!secondaryLoaded) {
-            const secondaryCSVURL = "http://localhost:8383/greenstone3/cgi-bin/metadata-server.pl?a=get-archives-assocfile&site=" + gs.xsltParams.site_name + "&c=" + gs.collectionMetadata.indexStem + 
-                                    "&d=" + gs.documentMetadata.Identifier + "&assocname=structured-audio.csv&dv=nminus-1";
-            loadCSVFile(secondaryCSVURL, ["speaker", "start", "end"], secondarySet);
+            loadCSVFile(inputFile.replace(".csv", "-2.csv"), ["speaker", "start", "end"], secondarySet);
             secondaryLoaded = true; // ensure secondarySet doesn't get re-read > once
          }
          document.getElementById("caret-container").style.display = "flex";
-         timelineMenuRegionConflict.classList.remove("disabled");
-         timelineMenuSpeakerConflict.classList.remove("disabled");
-         $('#track-set-label-bottom').fadeIn(100);
-         selectedVersions[1] = document.getElementById('track-set-label-bottom').children[0].innerText;
       } else {
+         dualModeMenuButton.classList.remove('visible');
          caretClicked('primary-caret');
          document.getElementById("caret-container").style.display = "none";
-         selectedVersions.splice(1, 1); // trim to one version in array
-         timelineMenuRegionConflict.firstElementChild.checked = false;
-         timelineMenuSpeakerConflict.firstElementChild.checked = false;
-         timelineMenuRegionConflict.classList.add("disabled");
-         timelineMenuSpeakerConflict.classList.add("disabled");
-         $('#track-set-label-bottom').fadeOut(100);
       }
       currSpeakerSet = primarySet;
+      drawVersionNames();
       if (!skipUndoState) addUndoState(primarySet, secondarySet, currSpeakerSet.isSecondary, dualMode, "dualModeChange", getCurrentRegionIndex());
    } 
 
@@ -1274,7 +887,6 @@ function loadAudio(audio, sectionData) {
    let interface_bootstrap_images = "interfaces/" + gs.xsltParams.interface_name + "/images/bootstrap/";
 
    function caretClicked(id) {
-      clearChapterSearch();
       if (id === "primary-caret") {
          currSpeakerSet = primarySet;
          swapCarets(true);
@@ -1285,100 +897,17 @@ function loadAudio(audio, sectionData) {
    }
 
    function swapCarets(toPrimary) {
-      const currCaretIsPrimary = primaryCaret.src.includes("fill") ? true : false; // initial value before swap
+      const currCaretIsPrimary = primaryCaret.src.includes("fill") ? true : false;
       if ((toPrimary && !currCaretIsPrimary) || (!toPrimary && currCaretIsPrimary)) { 
          removeCurrentRegion(); // ensure currentRegion is only removed if changing speakerSet
          flashChapters(); 
-         reloadChapterList();
       } 
       if (toPrimary) {
-         if (!currCaretIsPrimary) {
-            if (canvasImages[selectedVersions[0]]) { // if waveform image exists in cache
-               // console.log('waveform loaded from cache!');
-               drawImageOnWaveform(canvasImages[selectedVersions[0]]);
-               hideAudioLoader();
-            } else showAudioLoader();
-            const url = gs.variables.metadataServerURL + "?a=get-archives-assocfile&site=" + gs.xsltParams.site_name + 
-                        "&c=" + gs.cgiParams.c + "&d=" + gs.cgiParams.d + "&assocname=" + gs.documentMetadata.Audio;
-            wavesurfer.load(url); 
-         }
          primaryCaret.src = interface_bootstrap_images + "caret-right-fill.svg";
          secondaryCaret.src = interface_bootstrap_images + "caret-right.svg";
       } else {
-         if (currCaretIsPrimary) {
-            if (canvasImages[selectedVersions[1]]) { 
-               console.log('waveform loaded from cache!');
-               drawImageOnWaveform(canvasImages[selectedVersions[1]]);
-               hideAudioLoader();
-            } else showAudioLoader();
-            const url = gs.variables.metadataServerURL + "?a=get-archives-assocfile&site=" + gs.xsltParams.site_name + 
-                        "&c=" + gs.cgiParams.c + "&d=" + gs.cgiParams.d + "&assocname=" + gs.documentMetadata.Audio + "&dv=nminus-4";
-            wavesurfer.load(url); 
-         }
          primaryCaret.src = interface_bootstrap_images + "caret-right.svg";
          secondaryCaret.src = interface_bootstrap_images + "caret-right-fill.svg";
-      }
-   }
-
-   function showAudioLoader() { // shows spinner, loading audio text and hides regions
-      $('.wavesurfer-region').fadeOut(100);
-      $(".chapter").fadeOut(100);
-      $(".track-set-label").fadeOut(100);
-      waveformSpinner.style.display = 'block';
-      loader.style.display = "inline";
-      for (const ele of editPanel.children) ele.classList.add("disabled");
-      playPauseButton.classList.add("disabled");
-   }
-
-   function hideAudioLoader() {
-      $('.wavesurfer-region').fadeIn(100);
-      $(".chapter").fadeIn(100);
-      $("#track-set-label-top").fadeIn(100);
-      if (dualMode) $('#track-set-label-bottom').fadeIn(100);
-      waveformSpinner.style.display = 'none';
-      loader.style.display = "none";
-      for (const ele of editPanel.children) ele.classList.remove("disabled");
-      updateRegionEditPanel();
-      playPauseButton.classList.remove("disabled");
-   }
-
-   function drawImageOnWaveform(image) {
-      if (document.getElementById('new-canvas')) document.getElementById('new-canvas').remove();
-      var newCanvas = document.createElement("div");
-      newCanvas.id = "new-canvas";
-      newCanvas.style.width = wavesurfer.drawer.canvases[0].wave.width + 'px';
-      newCanvas.style.height = '140px';
-      newCanvas.style.backgroundImage = "url('" + image + "')";
-      waveformContainer.appendChild(newCanvas); 
-   }
-
-   function reloadChapterList() { 
-      chapters.innerHTML = "";
-      for (let i = 0; i < currSpeakerSet.tempSpeakerObjects.length; i++) {
-         let chapter = document.createElement("div"); 
-         chapter.classList.add("chapter");
-         chapter.id = "chapter" + i;
-         let speakerName = document.createElement("span");
-         speakerName.classList.add("speakerName");
-         speakerName.innerText = currSpeakerSet.tempSpeakerObjects[i].speaker;
-         let regionLocked = document.createElement("img");
-         regionLocked.src = interface_bootstrap_images + "lock.svg"; 
-         regionLocked.classList.add("speakerLocked", "hide"); 
-         if (currSpeakerSet.tempSpeakerObjects[i].locked && editMode) regionLocked.classList.remove("hide");
-         let speakerTime = document.createElement("span"); 
-         speakerTime.classList.add("speakerTime"); 
-         speakerTime.innerHTML = minutize(currSpeakerSet.tempSpeakerObjects[i].start) + " - " + minutize(currSpeakerSet.tempSpeakerObjects[i].end) + "s";
-         chapter.appendChild(speakerName);
-         chapter.appendChild(regionLocked);
-         chapter.appendChild(speakerTime);
-         chapter.addEventListener("click", chapterClicked);
-         chapter.addEventListener("mouseenter", e => { chapterEnter(Array.from(e.target.parentElement.children).indexOf(e.target)) });
-         chapter.addEventListener("mouseleave", e => { chapterLeave(Array.from(e.target.parentElement.children).indexOf(e.target)) });
-         if (chapterSearchInput.value.length > 0 && !speakerName.innerText.toLowerCase().includes(chapterSearchInput.value.toLowerCase())) {
-            chapter.style.display = "none";
-            currSpeakerSet.tempSpeakerObjects[i].region.element.style.display = "none";
-         }
-         chapters.appendChild(chapter);
       }
    }
 
@@ -1408,10 +937,11 @@ function loadAudio(audio, sectionData) {
       }
    });
 
-   zoomSlider.addEventListener('input', function() { // slider changes waveform zoom
+   zoomSlider.addEventListener("input", function() { // slider changes waveform zoom
       wavesurfer.zoom(Number(this.value) / 4); 
       if (currentRegion.speaker && getCurrentRegionIndex() != -1) { 
-         setHoverSpeaker(currSpeakerSet.tempSpeakerObjects[getCurrentRegionIndex()].region.element.style.left, currentRegion.speaker);
+         hoverSpeaker.innerHTML = currentRegion.speaker;
+         hoverSpeaker.style.marginLeft = parseInt(currSpeakerSet.tempSpeakerObjects[getCurrentRegionIndex()].region.element.style.left.slice(0, -2)) - waveform.scrollLeft + "px";
          drawCurrentRegionBounds();
       }
       let handles = document.getElementsByClassName("wavesurfer-handle");
@@ -1425,16 +955,13 @@ function loadAudio(audio, sectionData) {
          }
       }
    });
+   wavesurfer.zoom(zoomSlider.value / 4); // set default zoom point
 
    let toggleChapters = function() { // show & hide chapter section
       if (chapters.style.height == "0px") {
-         chapters.style.height = "90%";
-         chaptersContainer.style.height = "30vh";
-         chapterSearchInput.placeholder = "Filter by Name...";
+         chapters.style.height = "30vh";
       } else {
          chapters.style.height = "0px";
-         chaptersContainer.style.height = "0px";
-         chapterSearchInput.placeholder = "";
       }
    }
 
@@ -1444,12 +971,12 @@ function loadAudio(audio, sectionData) {
       this.speakerObjects = speakerObjects;
       this.tempSpeakerObjects = tempSpeakerObjects;
    }
-   let primarySet = new SpeakerSet(false, [], [], [], []);
-   let secondarySet = new SpeakerSet(true, [], [], [], []);
+   let primarySet = new SpeakerSet(false, [], [], []);
+   let secondarySet = new SpeakerSet(true, [], [], []);
    let currSpeakerSet = primarySet;
 
-   function loadCSVFile(filename, manualHeader, speakerSet, forcePopulate) { // based on: https://stackoverflow.com/questions/7431268/how-to-read-data-from-csv-file-using-javascript
-      console.log('loadCSVFile...');
+   function loadCSVFile(filename, manualHeader, speakerSet) { // based on: https://stackoverflow.com/questions/7431268/how-to-read-data-from-csv-file-using-javascript
+      // if (speakerSet) currSpeakerSet = speakerSet; // if parameter is given, set
       $.ajax({
          type: "GET",
          url: filename,
@@ -1457,25 +984,17 @@ function loadAudio(audio, sectionData) {
       }).then(function(data) {
          let dataLines = data.split(/\r\n|\n/);
          let headers;
-         // let startIndex;
-         let startIndex = 0;
+         let startIndex;
          speakerSet.uniqueSpeakers = []; // used for obtaining unique colours
          speakerSet.speakerObjects = []; // list of speaker items
 
-         if (dataLines[0].split(',').length === 3) { // assume speaker, start, end
-            headers = ["speaker", "start", "end"];
-         } else if (dataLines[0].split(',').length === 4) { // assume speaker, start, end, locked
-            headers = ["speaker", "start", "end", "locked"];
-         }  
-
-         // if (manualHeader.length > 0) { // headers for columns can be provided if not existent in csv
-         //    headers = manualHeader;
-         //    startIndex = 0;
-         // } else {
-         //    headers = dataLines[0].split(',');
-         //    startIndex = 1;
-         // }
-         // console.log('manualHeader: ' + manualHeader);
+         if (manualHeader) { // headers for columns can be provided if not existent in csv
+            headers = manualHeader;
+            startIndex = 0;
+         } else {
+            headers = dataLines[0].split(',');
+            startIndex = 1;
+         }
 
          for (let i = startIndex; i < dataLines.length; i++) {
             let data = dataLines[i].split(',');
@@ -1487,47 +1006,40 @@ function loadAudio(audio, sectionData) {
                      speakerSet.uniqueSpeakers.push(data[j]);
                   }
                }
-               if (headers.length === 3) item['locked'] = false;
                speakerSet.speakerObjects.push(item);
             }
          }
          speakerSet.tempSpeakerObjects = cloneSpeakerObjectArray(speakerSet.speakerObjects);
-         if (!speakerSet.isSecondary || forcePopulate) populateChapters(speakerSet); // prevents secondary set being drawn on first load
+         populateChapters(speakerSet);
          resetUndoStates(); // undo stack init
-      }, (error) => { console.log("loadCSVFile error:"); console.log(error); });
+      });
    }
 
    function populateChapters(data) { // populates chapter section and adds regions to waveform
       // colorbrewer is a web tool for guidance in choosing map colour schemes based on a letiety of settings.
       // this colour scheme is designed for qualitative data
-      if (regionColourSet.length < 1) {
-         for (let i = 0; i < data.uniqueSpeakers.length; i++) { // not tested in cases where there are more than 8 speakers!!
-            const adjIdx = i%8;
-            regionColourSet[adjIdx] = { name: data.uniqueSpeakers[i], colour: colourbrewerSet[adjIdx] }
-         }
-      }
+      // console.log('populateChapters...') // CLG
+      if (data.uniqueSpeakers.length > 8) colourbrewerset = colorbrewer.Set2[8];
+      else if (data.uniqueSpeakers.length < 3) colourbrewerset = colorbrewer.Set2[3];
+      else  colourbrewerset = colorbrewer.Set2[data.uniqueSpeakers.length];
 
       let isSelectedSet = false;
 
       if ((!data.isSecondary && primaryCaret.src.includes("fill")) || (data.isSecondary && secondaryCaret.src.includes("fill"))) isSelectedSet = true;
-      data.tempSpeakerObjects = sortSpeakerObjectsByStart(data.tempSpeakerObjects); // sort speakerObjects by start time
       if (isSelectedSet || !dualMode) chapters.innerHTML = ""; // clear chapter div for re-population
+      data.tempSpeakerObjects = sortSpeakerObjectsByStart(data.tempSpeakerObjects); // sort speakerObjects by start time
+
       for (let i = 0; i < data.tempSpeakerObjects.length; i++) {
          let chapter = document.createElement("div"); 
          chapter.classList.add("chapter");
          chapter.id = "chapter" + i;
          let speakerName = document.createElement("span");
          speakerName.classList.add("speakerName");
-         speakerName.innerText = data.tempSpeakerObjects[i].speaker;
-         let regionLocked = document.createElement("img");
-         regionLocked.src = interface_bootstrap_images + "lock.svg"; 
-         regionLocked.classList.add("speakerLocked", "hide"); 
-         if (data.tempSpeakerObjects[i].locked && editMode) regionLocked.classList.remove("hide");
+         speakerName.innerHTML = data.tempSpeakerObjects[i].speaker;
          let speakerTime = document.createElement("span"); 
          speakerTime.classList.add("speakerTime"); 
          speakerTime.innerHTML = minutize(data.tempSpeakerObjects[i].start) + " - " + minutize(data.tempSpeakerObjects[i].end) + "s";
          chapter.appendChild(speakerName);
-         chapter.appendChild(regionLocked);
          chapter.appendChild(speakerTime);
          chapter.addEventListener("click", chapterClicked);
          chapter.addEventListener("mouseenter", e => { chapterEnter(Array.from(e.target.parentElement.children).indexOf(e.target)) });
@@ -1543,14 +1055,6 @@ function loadAudio(audio, sectionData) {
 
          if (isSelectedSet || !dualMode) chapters.appendChild(chapter);
 
-         let regColour;
-         if (regionColourSet.find(item => item.name === data.tempSpeakerObjects[i].speaker)) {
-            regColour = regionColourSet.find(item => item.name === data.tempSpeakerObjects[i].speaker).colour;
-         } else {
-            regionColourSet.push({ name: data.tempSpeakerObjects[i].speaker, colour: colourbrewerSet[i%8]});
-            regColour = regionColourSet.at(-1).colour;
-         }
-
          let associatedReg = wavesurfer.addRegion({ // create associated wavesurfer region
             id: "region" + i,
             start: data.tempSpeakerObjects[i].start,
@@ -1560,37 +1064,22 @@ function loadAudio(audio, sectionData) {
             attributes: {
                label: speakerName,
             },
-            // color: colourbrewerSet[data.uniqueSpeakers.indexOf(data.tempSpeakerObjects[i].speaker)%8] + regionTransparency,
-            color: regColour + regionTransparency,
+            color: colourbrewerset[data.uniqueSpeakers.indexOf(data.tempSpeakerObjects[i].speaker)%8] + regionTransparency,
             ...(selected) && {color: "rgba(255,50,50,0.5)"},
          });
          data.tempSpeakerObjects[i].region = associatedReg;
-         if (selected && data.tempSpeakerObjects[i].locked) { // add padlock to regions if they are selected and locked
-            let lockedImg = document.createElement("img");
-            lockedImg.src = interface_bootstrap_images + "lock.svg";
-            associatedReg.element.prepend(lockedImg); 
-         }
       }
-      if (waveformSpinner.style.display == 'block') $(".wavesurfer-region").fadeOut(100); // keep regions hidden until wavesurfer.load() has finished
+
       let handles = document.getElementsByTagName('handle');
       for (const handle of handles) handle.addEventListener('mousedown', () => mouseDown = true);
 
       let regions = document.getElementsByTagName("region");
       if (dualMode) {
-         if (document.getElementsByClassName("region-top").length == 0) {
-            for (const reg of regions) {
-               if (reg.classList.length == 1) reg.classList.add("region-top"); 
-            }
-         } else {
-            for (const rego of regions) {
-               if (!rego.classList.contains("region-top") && rego.classList.length == 1) rego.classList.add("region-bottom");
-            }
-         }
+         if (document.getElementsByClassName("region-top").length === 0) for (const reg of regions) reg.classList.add("region-top"); 
+         else for (const rego of regions) if (!rego.classList.contains("region-top")) rego.classList.add("region-bottom");
       }
       if (editMode) for (const reg of regions) reg.style.setProperty("z-index", "3", "important");
       else for (const reg of regions) reg.style.setProperty("z-index", "1", "important");
-
-      chapterSearchInput.dispatchEvent(new Event("input"));
    }
 
    function loadJSONFile(filename) {
@@ -1598,7 +1087,7 @@ function loadAudio(audio, sectionData) {
          type: "GET",
          url: filename,
          dataType: "text",
-      }).then(function(data){ populateWords(JSON.parse(data)) }, (error) => { console.log("loadJSONFile error:"); console.log(error); });
+      }).then(function(data){ populateWords(JSON.parse(data)) });
    }
 
    function populateWords(data) { // populates word section and adds regions to waveform
@@ -1629,10 +1118,8 @@ function loadAudio(audio, sectionData) {
 
    let chapterClicked = function(e) { // plays audio from start of chapter
       const index = Array.from(chapters.children).indexOf(e.target);
-      if (currSpeakerSet.tempSpeakerObjects[index]) {
-         let clickedRegion = currSpeakerSet.tempSpeakerObjects[index].region;
-         handleRegionClick(clickedRegion, e); 
-      }
+      let clickedRegion = currSpeakerSet.tempSpeakerObjects[index].region;
+      handleRegionClick(clickedRegion, e);
    }
 
    function wordClicked(data, id) { // plays audio from start of word
@@ -1644,10 +1131,11 @@ function loadAudio(audio, sectionData) {
    function chapterEnter(idx) {
       let reg = currSpeakerSet.tempSpeakerObjects[idx].region;
       regionEnter(reg);
-      setHoverSpeaker(reg.element.style.left, reg.attributes.label.innerText);
+      hoverSpeaker.innerHTML = reg.attributes.label.innerHTML;  
+      hoverSpeaker.style.marginLeft = parseInt(reg.element.style.left.slice(0, -2)) - waveform.scrollLeft + "px";
       if (!isInCurrentRegions(reg)) {
          removeRegionBounds();
-         drawRegionBounds(reg, wave.scrollLeft, "black");
+         drawRegionBounds(reg, waveform.scrollLeft, "black");
       }
    }
 
@@ -1656,7 +1144,8 @@ function loadAudio(audio, sectionData) {
       removeRegionBounds();
       hoverSpeaker.innerHTML = "";
       if (currentRegion.speaker && getCurrentRegionIndex() != -1) { 
-         setHoverSpeaker(currSpeakerSet.tempSpeakerObjects[getCurrentRegionIndex()].region.element.style.left, currentRegion.speaker);
+         hoverSpeaker.innerHTML = currentRegion.speaker;
+         hoverSpeaker.style.marginLeft = parseInt(currSpeakerSet.tempSpeakerObjects[getCurrentRegionIndex()].region.element.style.left.slice(0, -2)) - waveform.scrollLeft + "px";
          drawCurrentRegionBounds();
       } 
    }
@@ -1665,7 +1154,7 @@ function loadAudio(audio, sectionData) {
       if (!dualMode || (region.element.classList.contains("region-top") && primaryCaret.src.includes("fill")) || region.element.classList.contains("region-bottom") && secondaryCaret.src.includes("fill")) {
          let colour;
          if (highlight) {
-            colour = "rgb(81, 90, 90)";
+            colour = "rgb(101, 116, 116)";
             regionEnter(region);
          } else {
             colour = "";
@@ -1674,8 +1163,9 @@ function loadAudio(audio, sectionData) {
          if (isCurrentRegion(region) || isInCurrentRegions(region)) {
             colour = "rgba(255, 50, 50, 0.5)";
          }
-         chapters.childNodes[getIndexOfRegion(region)].style.backgroundColor = colour;
-         // chapters.childNodes[region.id.replace("region","")].style.backgroundColor = colour;
+         let regionIndex = region.id.replace("region","");
+         let corrItem = document.getElementById(itemType + regionIndex);
+         corrItem.style.backgroundColor = colour; // updates chapter background (not region)
       }
    }
 
@@ -1684,24 +1174,19 @@ function loadAudio(audio, sectionData) {
       if (isCurrentRegion(region) || isInCurrentRegions(region)) {
          region.update({ color: "rgba(255, 50, 50, 0.5)" });
       } else {
-         region.update({ color: "rgba(255, 255, 255, 0.3)" });
-      }
-      if (editMode && currSpeakerSet.tempSpeakerObjects[getIndexOfRegion(region)].locked && region.element.getElementsByTagName("img").length == 0) { // hovered region is locked
-         let lockedImg = document.createElement("img");
-         lockedImg.src = interface_bootstrap_images + "lock.svg";
-         region.element.prepend(lockedImg); 
+         region.update({ color: "rgba(255, 255, 255, 0.35)" });
       }
    }
 
    function regionLeave(region) { 
+      // console.log("regionLeave");
       if (itemType == "chapter") {
          if (isCurrentRegion(region) || isInCurrentRegions(region)) {
             region.update({ color: "rgba(255, 50, 50, 0.5)" });
          } else if (!(wavesurfer.getCurrentTime() + 0.1 < region.end && wavesurfer.getCurrentTime() > region.start)) {
             let index = region.id.replace("region", "");
-            region.update({ color: regionColourSet.find(item => item.name === currSpeakerSet.tempSpeakerObjects[index].speaker).colour + regionTransparency });
+            region.update({ color: colourbrewerset[currSpeakerSet.uniqueSpeakers.indexOf(currSpeakerSet.tempSpeakerObjects[index].speaker)%8] + regionTransparency });
          }
-         if (region.element.getElementsByTagName("img").length > 0 && !isCurrentRegion(region) && !isInCurrentRegions(region)) region.element.firstChild.remove();
       } else {
          region.update({ color: "rgba(255, 255, 255, 0.1)" });
       }
@@ -1728,57 +1213,52 @@ function loadAudio(audio, sectionData) {
 
    // edit functionality
 
-   function toggleEditMode(skipDualModeToggle) { // toggles edit panel and redraws regions with resize handles
+   function toggleEditMode() { // toggles edit panel and redraws regions with resize handles
       if (gs.variables.allowEditing === '1') {
-         // if (dualMode && !skipDualModeToggle) timelineMenuDualMode.click(); // dual mode is disabled when leaving edit mode
+         if (dualMode) dualModeCheckbox.click(); // dual mode is disabled when leaving edit mode
          toggleEditPanel();
          updateRegionEditPanel();
-         reloadChapterList();
+         drawVersionNames();
       }
    }
 
-   function toggleVersionDropdown(e) {
-      e.stopPropagation();
-      if (versionSelectMenu.classList.contains("visible")) versionSelectMenu.classList.remove("visible");
-      else {
-         versionSelectMenu.classList.add("visible");
-         versionSelectMenu.style.left = e.target.parentElement.clientWidth + 5 + "px";
-         if (e.target.parentElement.id.includes("top")) versionSelectMenu.classList.add("versionTop");
-         else versionSelectMenu.classList.remove("versionTop");
-         for (version of versionSelectMenu.children) { // handle disabling of regions if being viewed
-            if (selectedVersions.includes(version.id)) version.classList.add('disabled');
-            else version.classList.remove('disabled');
-         }
-      }
+   function drawVersionNames() { 
+      if (document.getElementById("prim-set-label")) document.getElementById("prim-set-label").remove();
+      if (document.getElementById("sec-set-label")) document.getElementById("sec-set-label").remove();
+      if (editMode && !document.body.contains(loader)) { // editmode is opposite here
+         let dataLabel = document.createElement("span");
+         dataLabel.textContent = "Bella A V1.0";
+         dataLabel.id = "prim-set-label";
+         waveform.append(dataLabel);
+         if (dualMode) {
+            let dataLabel = document.createElement("span");
+            dataLabel.textContent = "Bella A V2.0";
+            dataLabel.id = "sec-set-label";
+            waveform.append(dataLabel);
+         } 
+      } 
    }
 
    function toggleEditPanel() { // show & hide edit panel
       removeCurrentRegion();
       hoverSpeaker.innerHTML = "";
       if (editPanel.style.height == "0px") {
-         // timelineMenuButton.classList.add('visible');
-         if (chapters.style.height == "0px") { // expands chapter panel
-            toggleChapters();
-         } 
+         if (chapters.style.height == "0px") chapters.style.height = "30vh"; // expands chapter panel
          editPanel.style.height = "30vh";
-         editPanel.style.padding = "0.5rem";
+         editPanel.style.padding = "1rem";
          setRegionEditMode(true);
       } else { 
-         // timelineMenuButton.classList.remove('visible');
          editPanel.style.height = "0px"; 
          editPanel.style.padding = "0px"; 
          setRegionEditMode(false);
       }
    }
 
-   function setRegionEditMode(state) { 
+   function setRegionEditMode(state) {
       editMode = state;
       chapters.innerHTML = '';
-      $('.wavesurfer-region').hide();
-      reloadRegionsAndChapters(); // editMode sets drag/resize property when regions are redrawn
-      // for (const reg of primarySet.tempSpeakerObjects) {
-      //    reg.region.update({ drag: state, resize: state });
-      // }
+      wavesurfer.clearRegions();
+      populateChapters(currSpeakerSet);
    }
 
    function handleRegionEdit(region, e) { 
@@ -1786,7 +1266,8 @@ function loadAudio(audio, sectionData) {
       else { currSpeakerSet = primarySet; swapCarets(true) }
       editsMade = true;
       currentRegion = region;
-      wavesurfer.backend.seekTo(region.start);
+      region.play();
+      wavesurfer.pause();
       let regionIndex = getCurrentRegionIndex();
       currentRegion.speaker = currSpeakerSet.tempSpeakerObjects[regionIndex].speaker;
       currSpeakerSet.tempSpeakerObjects[regionIndex].region = region;
@@ -1872,12 +1353,11 @@ function loadAudio(audio, sectionData) {
    }
 
    function createNewRegion() { // adds a new region to the waveform
-      clearChapterSearch();
       const speaker = "NEW_SPEAKER"; // default name
       if (!currSpeakerSet.uniqueSpeakers.includes(speaker)) { currSpeakerSet.uniqueSpeakers.push(speaker) }
       const start = newRegionOffset + wavesurfer.getCurrentTime();
       const end = newRegionOffset + wavesurfer.getCurrentTime() + 15;
-      newRegionOffset += 5; // offset new region if multiple new regions are created. 
+      newRegionOffset += 5; // offset new region if multiple new regions are created. TODO: check region has different start time
       currSpeakerSet.tempSpeakerObjects.push({speaker: speaker, start: start, end: end});
 
       editsMade = true;
@@ -1911,9 +1391,7 @@ function loadAudio(audio, sectionData) {
                   if (!changeAllCheckbox.checked && currentRegions.length < 1) {
                      removeCurrentRegion();
                      addUndoState(primarySet, secondarySet, currSpeakerSet.isSecondary, dualMode, "remove", currentRegionIndex);
-                     updateRegionEditPanel();
-                     reloadChapterList();
-                     return; // jump out of function
+                     return; // jump out of for loop
                   }
                } else if (isInCurrentRegions(currSpeakerSet.tempSpeakerObjects[i])) { 
                   currSpeakerSet.tempSpeakerObjects[i].region.remove();
@@ -1922,9 +1400,8 @@ function loadAudio(audio, sectionData) {
                }
             }
             removeCurrentRegion();
+            // reloadRegionsAndChapters();
             addUndoState(primarySet, secondarySet, currSpeakerSet.isSecondary, dualMode, "remove", currentRegionIndex, currentRegionIndexes); // multiple regions removed
-            updateRegionEditPanel();
-            reloadChapterList();
          } else { console.log("no region selected") }
       }
    }
@@ -1954,6 +1431,11 @@ function loadAudio(audio, sectionData) {
       for (let i = 0; i < currSpeakerSet.tempSpeakerObjects.length; i++) {
          if (isCurrentRegion(currSpeakerSet.tempSpeakerObjects[i].region)) { return i }
       }
+      // if (dualMode) {
+      //    for (let i = 0; i < secondarySet.tempSpeakerObjects.length; i++) {
+      //       if (isCurrentRegion(secondarySet.tempSpeakerObjects[i].region)) { return i }
+      //    }
+      // }
       return -1;
    }
 
@@ -1988,26 +1470,27 @@ function loadAudio(audio, sectionData) {
 
    function speakerChange() { // speaker input name onInput handler
       const newSpeaker = speakerInput.value;
-      clearChapterSearch();
-      if (newSpeaker && newSpeaker.trim() != "") {
+      if (newSpeaker && newSpeaker != "") {
          speakerInput.style.outline = "2px solid transparent";
          if (getCurrentRegionIndex() != -1) { // if a region is selected
             const chaps = chapters.childNodes;
             if (!currSpeakerSet.uniqueSpeakers.includes(newSpeaker)) { currSpeakerSet.uniqueSpeakers.push(newSpeaker) }
             if (currentRegions && currentRegions.length < 1) {  // single change
                currSpeakerSet.tempSpeakerObjects[getCurrentRegionIndex()].speaker = newSpeaker; // update corrosponding speakerObject speaker
-               currSpeakerSet.tempSpeakerObjects[getCurrentRegionIndex()].region.attributes.label.innerText = newSpeaker;
+               currSpeakerSet.tempSpeakerObjects[getCurrentRegionIndex()].region.attributes.label.innerHTML = newSpeaker;
                chaps[getCurrentRegionIndex()].firstChild.textContent = newSpeaker; // update chapter text
             } else if (currentRegions && currentRegions.length > 1) { // multiple changes
                for (idx of getCurrentRegionsIndexes()) {
                   currSpeakerSet.tempSpeakerObjects[idx].speaker = newSpeaker;
-                  currSpeakerSet.tempSpeakerObjects[idx].region.attributes.label.innerText = newSpeaker;
+                  currSpeakerSet.tempSpeakerObjects[idx].region.attributes.label.innerHTML = newSpeaker;
                   chaps[idx].firstChild.textContent = newSpeaker;
                }
             } 
+            // speakerInput.value = "";
             currentRegion.speaker = newSpeaker;
             chapterLeave(getCurrentRegionIndex()); // update region bound text
             editsMade = true;
+            // reloadRegionsAndChapters();
             addUndoState(primarySet, secondarySet, currSpeakerSet.isSecondary, dualMode, "speaker-change", getCurrentRegionIndex(), getCurrentRegionsIndexes());
          } else { console.log("no region selected") }
       } else { console.log("no text in speaker input"); speakerInput.style.outline = "2px solid firebrick"; }
@@ -2045,8 +1528,9 @@ function loadAudio(audio, sectionData) {
             zoomTo(tempZoomSave / 4);  // zoom back in to previous level
          }
          currentRegions = []; // this will lose track of previously selected region*s*
+         // changeAllLabel.innerHTML = "Change all";
+         reloadRegionsAndChapters();
       }
-      reloadRegionsAndChapters();
       if (!skipUndoState) addUndoState(primarySet, secondarySet, currSpeakerSet.isSecondary, dualMode, "selectAllChange", getCurrentRegionIndex(), getCurrentRegionsIndexes());
    }
 
@@ -2056,8 +1540,8 @@ function loadAudio(audio, sectionData) {
    }
 
    function disableStartEndInputs() { // adds the 'disabled' tag to all time inputs
-      for (idx in startTimeInput.childNodes) { startTimeInput.childNodes[idx].value = 0; startTimeInput.childNodes[idx].disabled = true; }
-      for (idx in endTimeInput.childNodes) { endTimeInput.childNodes[idx].value = 0; endTimeInput.childNodes[idx].disabled = true; }
+      for (idx in startTimeInput.childNodes) { startTimeInput.childNodes[idx].disabled = true; startTimeInput.childNodes[idx].value = 0; }
+      for (idx in endTimeInput.childNodes) { endTimeInput.childNodes[idx].disabled = true; endTimeInput.childNodes[idx].value = 0; }
    }
 
    function zoomTo(dest) { // (smoothly?) zooms wavesurfer waveform to destination
@@ -2093,85 +1577,20 @@ function loadAudio(audio, sectionData) {
       
    }
 
-   function toggleSavePopup() { 
-      savePopupCommitMsg.value = savePopupCommitMsg.value.trim(); // clears initial whitespace caused by <xsl: text>
-      if (savePopup.classList.contains("visible")) {
-         savePopup.classList.remove("visible");
-         savePopupBG.classList.remove("visible");
-      } else {
-         savePopup.classList.add("visible");
-         savePopupBG.classList.add("visible");
-         savePopup.children[0].innerText = "Commit changes for: " + selectedVersions[(!dualMode || primaryCaret.src.includes("fill")) ? 0 : 1]; 
-      }
-   }
-
-   function saveRegionChanges() { // saves tempSpeakerObjects to speakerObjects ddddd
+   function saveRegionChanges() { // saves tempSpeakerObjects to speakerObjects
       if (!saveButton.classList.contains("disabled")) {
-         toggleSavePopup();
-         // old save functionality
          currSpeakerSet.speakerObjects = cloneSpeakerObjectArray(currSpeakerSet.tempSpeakerObjects);
          editsMade = false;
          removeCurrentRegion();
          reloadRegionsAndChapters();
-         console.log("saved changes.");
+         console.log("saved changes");
       }
    }
 
-   function commitChanges() {
-      if (savePopupCommitMsg.value && savePopupCommitMsg.value.length > 0) {
-         console.log('committing with message: ' + savePopupCommitMsg.value);
-         // inc fldv_history
-         $.ajax({
-            type: "GET",
-            url: mod_meta_base_url,
-            data: { "o": "json", "s1.a": "inc-fldv-nminus1" }
-         }).then((out) => {
-            console.log('fldv inc success with status code: ' + out.page.pageResponse.status.code);
-            if (out.page.pageResponse.status.code == 11) { // more information on codes found in: GSStatus.java
-               ajaxSetCommitMeta();
-            }
-         }, (error) => { console.log("inc-fldv-nminus1 error:\n" + error) });
-         toggleSavePopup();
-      } else {
-         window.alert("Commit message cannot be left empty.");
-      }
-   }
-
-   function ajaxSetCommitMeta() { // saves commit message to current document's metadata
-      $.ajax({
-         type: "GET",
-         url: mod_meta_base_url,
-         data: { "o" : "json", "s1.a": "set-archives-metadata", "s1.metaname": "commitmessage", "s1.metavalue": savePopupCommitMsg.value.trim(), "s1.metamode": "override" },
-      }).then((out) => {
-         console.log('commit success with status code: ' + out.page.pageResponse.status.code);
-         if (out.page.pageResponse.status.code == 11) {
-            ajaxSetAssocFile();
-         }
-      }, (error) => { console.log("commit_msg_url error:"); console.log(error); });
-   }
-
-   function ajaxSetAssocFile() { // sets current document's associated file to tempSpeakerObjects
-         $.ajax({
-            type: "POST",
-            url: gs.xsltParams.library_name,
-            data: { "o" : "json", "a": "g", "rt": "r", "ro": "0", "s": "ModifyMetadata", "s1.collection": gs.cgiParams.c, "s1.site": gs.xsltParams.site_name, "s1.d": gs.cgiParams.d, 
-                    "s1.a": "set-archives-assocfile", "s1.assocname": "structured-audio.csv", "s1.filedata": speakerObjToCSVText() },
-         }).then((out) => {
-            console.log('set-archives-assocfile success with status code: ' + out.page.pageResponse.status.code);
-            resetUndoStates();
-         }, (error) => { console.log("set_assoc_url error:"); console.log(error); });
-   }
-
-   function speakerObjToCSVText() { // converts tempSpeakerObjects to csv-like string 
-      console.log(currSpeakerSet.tempSpeakerObjects.map(item => [item.speaker, item.start, item.end, item.locked]).join('\n'));
-      return currSpeakerSet.tempSpeakerObjects.map(item => [item.speaker, item.start, item.end, item.locked]).join('\n');
-   }
-
-   function discardRegionChanges(forceDiscard) { // resets tempSpeakerObjects to speakerObjects
-      if (!discardButton.classList.contains("disabled") || forceDiscard) {
-         let confirm = false;
-         if (!forceDiscard) { confirm = window.confirm("Are you sure you want to discard changes?"); }
-         if (confirm || forceDiscard) {
+   function discardRegionChanges() { // resets tempSpeakerObjects to speakerObjects
+      if (!discardButton.classList.contains("disabled")) {
+         let confirm = window.confirm("Are you sure you want to discard changes?");
+         if (confirm) {
             currSpeakerSet.tempSpeakerObjects = cloneSpeakerObjectArray(currSpeakerSet.speakerObjects);
             editsMade = false;
             removeCurrentRegion();
@@ -2184,6 +1603,7 @@ function loadAudio(audio, sectionData) {
 
    function reloadRegionsAndChapters() { // redraws edit panel, chapter list, wavesurfer regions 
       updateRegionEditPanel();
+      wavesurfer.clearRegions();
       $(".region-top").remove();
       $(".region-bottom").remove();
       $(".wavesurfer-region").remove();
@@ -2193,16 +1613,17 @@ function loadAudio(audio, sectionData) {
          currSpeakerSet = primarySet;
       }
       updateCurrSpeakerSet();
-      if (editMode && currentRegion && currentRegion.speaker && getCurrentRegionIndex() != -1 && currSpeakerSet.tempSpeakerObjects[getCurrentRegionIndex()].region.element) { 
-         setHoverSpeaker(currSpeakerSet.tempSpeakerObjects[getCurrentRegionIndex()].region.element.style.left, currentRegion.speaker);
+      if (editMode && currentRegion && currentRegion.speaker && getCurrentRegionIndex() != -1) { 
+         hoverSpeaker.innerHTML = currentRegion.speaker;
+         hoverSpeaker.style.marginLeft = parseInt(currSpeakerSet.tempSpeakerObjects[getCurrentRegionIndex()].region.element.style.left.slice(0, -2)) - waveform.scrollLeft + "px";
          drawCurrentRegionBounds();
       }
       if (currentRegions.length < 1) { 
          removeButton.innerHTML = "Remove Selected Region";
-         // enableStartEndInputs();
+         enableStartEndInputs();
       } else {
          removeButton.innerHTML = "Remove Selected Regions (x" + currentRegions.length + ")";
-         // disableStartEndInputs();
+         disableStartEndInputs();
          const uniqueSelectedSpeakers = [... new Set(currentRegions.map(a => a.speaker))]; // gets unique speakers in currentRegions
          uniqueSelectedSpeakers.sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
          speakerInput.value = uniqueSelectedSpeakers.join(", ");
@@ -2255,16 +1676,16 @@ function loadAudio(audio, sectionData) {
          e.value = Math.round(e.valueAsNumber * 10) / 10; // to 1dp
          if (e.classList.contains("seconds") && !e.value.includes(".")) { e.value = e.value + ".0"; }
          else if (e.value.length === 1){ e.value = '0' + e.value; }// 0 padded on left
+         // if (e.value.length === 3) {e.value = '0' + e.value ; console.log('3: ' + e.value)} // 0 on the left (doesn't work on FF)
       });      
    }
 
    function addUndoState(state, secState, isSec, dualMode, type, currRegIdx, currRegIdxs) { // adds a new state to the undoStates stack
       let newState = cloneSpeakerObjectArray(state.tempSpeakerObjects); // clone method removes references
       let newSecState = cloneSpeakerObjectArray(secState.tempSpeakerObjects); // clone method removes references
-      let changedTrack = (type == "dualModeChange" || type == "selectAllChange") ? "none" : selectedVersions[isSec ? 1 : 0] // sets changedTrack to version name of edited region set 
       undoButton.classList.remove("disabled");
       undoStates = undoStates.slice(0, undoLevel + 1); // trim to current level if undos have already been made
-      undoStates.push({state: newState, secState: newSecState, isSec: isSec, changedTrack: changedTrack, dualMode: dualMode, currentRegionIndex: currRegIdx, currentRegionIndexes: currRegIdxs, type: type});
+      undoStates.push({state: newState, secState: newSecState, isSec: isSec, dualMode: dualMode, currentRegionIndex: currRegIdx, currentRegionIndexes: currRegIdxs, type: type});
       if ((type === "change-time" && prevUndoState === "change-time") || (type === "speaker-change" && prevUndoState === "speaker-change")) { // checks if similar change was made previously
          undoStates.splice(-2, 1); // remove second-to-last item in undoStates stack (merge last two changes into one to avoid multiple small edits)
          prevUndoState = type;
@@ -2280,14 +1701,12 @@ function loadAudio(audio, sectionData) {
    }
 
    function undo() { // undo action: go back one state in the undoStates stack
-      if (!undoButton.classList.contains("disabled") && editMode) { // ensure there exist states to undo to
-         clearChapterSearch();
+      if (!undoButton.classList.contains("disabled")) { // ensure there exist states to undo to
          if (undoLevel - 1 < 0) console.log("ran out of undos");
          else {            
-            removeCurrentRegion();  
             let adjustedUndoLevel = undoLevel-1;
             if (undoStates[undoLevel].type == "dualModeChange") { // toggle dual mode
-               // dualModeCheckbox.checked = !dualMode;
+               dualModeCheckbox.checked = !dualMode;
                dualModeChanged(true);
             } else if (undoStates[undoLevel].type == "selectAllChange") { // toggle select all
                changeAllCheckbox.checked = !changeAllCheckbox.checked;
@@ -2299,6 +1718,7 @@ function loadAudio(audio, sectionData) {
                }
                let selectedSpeakerSet;
                // handle currentRegion change
+               removeCurrentRegion();  
                if (undoStates[undoLevel] && undoStates[undoLevel].type && undoStates[undoLevel].type == "remove") { // if destination state type is remove
                   selectedSpeakerSet = (undoStates[undoLevel].isSec) ? secondarySet : primarySet;
                   if (selectedSpeakerSet.isSecondary) caretClicked("secondary-caret");
@@ -2314,9 +1734,9 @@ function loadAudio(audio, sectionData) {
                   }
                   currentRegion = selectedSpeakerSet.tempSpeakerObjects[undoStates[undoLevel].currentRegionIndex];
                } 
-               // handle currentRegions restoration
-               if (undoStates[undoLevel].currentRegionIndexes && undoStates[undoLevel].currentRegionIndexes.length > 1) {
-                  for (const idx of undoStates[undoLevel].currentRegionIndexes) currentRegions.push(currSpeakerSet.tempSpeakerObjects[idx]);
+               // handle currentRegions change NEEDS REVISION xxxxx
+               if (undoStates[undoLevel-1].currentRegionIndexes && undoStates[undoLevel-1].currentRegionIndexes.length > 1) {
+                  for (const idx of undoStates[undoLevel-1].currentRegionIndexes) currentRegions.push(currSpeakerSet.tempSpeakerObjects[idx]);
                }
             }
             editsMade = true;
@@ -2332,12 +1752,11 @@ function loadAudio(audio, sectionData) {
    }
 
    function redo() { // redo action: go forward one state in the undoStates stack
-      if (!redoButton.classList.contains("disabled") && editMode) { // ensure there exist states to redo to
-         clearChapterSearch();
+      if (!redoButton.classList.contains("disabled")) { // ensure there exist states to redo to
          if (undoLevel + 1 >= undoStates.length) console.log("ran out of redos");
          else {
             if (undoStates[undoLevel+1].type == "dualModeChange") { // toggle dual mode
-               // dualModeCheckbox.checked = !dualMode;
+               dualModeCheckbox.checked = !dualMode;
                dualModeChanged(true);
             } else if (undoStates[undoLevel+1].type == "selectAllChange") { // toggle select all
                changeAllCheckbox.checked = !changeAllCheckbox.checked;
@@ -2364,7 +1783,9 @@ function loadAudio(audio, sectionData) {
 
                   // console.log("redo-ing to index " + undoStates[undoLevel+1].currentRegionIndex);
                   if (undoStates[undoLevel+1].currentRegionIndexes && undoStates[undoLevel+1].currentRegionIndexes.length > 1) {
-                     for (const idx of undoStates[undoLevel+1].currentRegionIndexes) currentRegions.push(currSpeakerSet.tempSpeakerObjects[idx]);
+                     for (const idx of undoStates[undoLevel-1].currentRegionIndexes) currentRegions.push(currSpeakerSet.tempSpeakerObjects[idx]);
+                     // currentRegions = getRegionsWithSpeaker(currentRegion.speaker);
+                     // if (!speakerCheckbox.checked) speakerCheckbox.click(); // ensures onchange event is fired
                   }
                }
             }
@@ -2394,21 +1815,21 @@ function loadAudio(audio, sectionData) {
 
    function waveformScrolled() { // waveform scroll handler
       if (currentRegion.speaker && getCurrentRegionIndex() != -1) { // updates region bound markers if selected region exists
-         setHoverSpeaker(currSpeakerSet.tempSpeakerObjects[getCurrentRegionIndex()].region.element.style.left, currentRegion.speaker);
+         hoverSpeaker.innerHTML = currentRegion.speaker;
+         hoverSpeaker.style.marginLeft = parseInt(currSpeakerSet.tempSpeakerObjects[getCurrentRegionIndex()].region.element.style.left.slice(0, -2)) - waveform.scrollLeft + "px";
          drawCurrentRegionBounds();
       }
-      if (document.getElementById('new-canvas')) { document.getElementById('new-canvas').style.left = "-" + wave.scrollLeft + 'px' } // update placeholder waveform scroll position
    }
 
    function drawCurrentRegionBounds() {
       removeRegionBounds();
-      // if (editMode) {
+      if (editMode) {
          let currIndexes = getCurrentRegionsIndexes();
-         if (getCurrentRegionIndex() != -1) drawRegionBounds(currSpeakerSet.tempSpeakerObjects[getCurrentRegionIndex()].region, wave.scrollLeft, "FireBrick");
+         if (getCurrentRegionIndex != 0) drawRegionBounds(currSpeakerSet.tempSpeakerObjects[getCurrentRegionIndex()].region, waveform.scrollLeft, "FireBrick");
          for (let i = 0; i < currIndexes.length; i++) {
-            drawRegionBounds(currSpeakerSet.tempSpeakerObjects[currIndexes[i]].region, wave.scrollLeft, "FireBrick");
+            drawRegionBounds(currSpeakerSet.tempSpeakerObjects[currIndexes[i]].region, waveform.scrollLeft, "FireBrick");
          }
-      // }
+      }
    }
 
    function drawRegionBounds(region, scrollPos, colour) { // draws on canvas to show bounds of hovered/selected region
@@ -2418,7 +1839,7 @@ function loadAudio(audio, sectionData) {
       hoverSpeakerCanvas.width = audioContainer.clientWidth; // max width of drawn bounds
       const ctx = hoverSpeakerCanvas.getContext("2d");
 
-      // ctx.translate(0.5, 0.5); // fixes lineWidth inconsistency
+      ctx.translate(0.5, 0.5); // fixes lineWidth inconsistency
       ctx.lineWidth = 1;
       if (colour == "FireBrick") ctx.lineWidth = 3;
       if (currentRegions && currentRegions.length < 1 && isCurrentRegion(region) && editMode) {
@@ -2447,10 +1868,14 @@ function loadAudio(audio, sectionData) {
 
    function cloneSpeakerObjectArray(inputArray) { // clones speakerObjectArray without references (wavesurfer regions)
       let output = [];
-      for (let i = 0; i < inputArray.length; i++) { 
-         output.push({ speaker: inputArray[i].speaker, start: inputArray[i].start, end: inputArray[i].end, locked: (inputArray[i].locked === "true" || inputArray[i].locked === true) });
-      }
+      for (let i = 0; i < inputArray.length; i++) { output.push({speaker: inputArray[i].speaker, start: inputArray[i].start, end: inputArray[i].end }) }
       return output;
+   }
+
+   function flashInput(valid) { // flashes background of input to show validity of input
+      if (valid) speakerInput.style.backgroundColor = "rgb(50,255,50)"; 
+      else speakerInput.style.backgroundColor = "rgb(255,50,50)";
+      setTimeout(() => { speakerInput.style.backgroundColor = "rgb(255,255,255)" }, 750);
    }
 
    function flashChapters() {
@@ -2464,7 +1889,7 @@ function loadAudio(audio, sectionData) {
          wavesurfer.setHeight(175);
       } else  {
          audioContainer.classList.remove("fullscreen");
-         wavesurfer.setHeight(140);
+         wavesurfer.setHeight(128);
       }
    }
 
