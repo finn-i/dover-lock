@@ -206,7 +206,7 @@
 							<div class="flex-leftalign toolbar-section">
 								<img src="interfaces/{$interface_name}/images/bootstrap/chapters.svg" id="chapterButton" title="Click to expand audio chapters" />
 								<img src="interfaces/{$interface_name}/images/bootstrap/zoom-out.svg" id="zoomOutButton" title="Click to zoom out" />
-								<input type="range" min="0" max="100" value="25" id="zoom-slider" step="10" title="Click and drag to adjust zoom level" />
+								<input type="range" min="0" max="200" value="50" id="zoom-slider" step="10" title="Click and drag to adjust zoom level" />
 								<img src="interfaces/{$interface_name}/images/bootstrap/zoom-in.svg" id="zoomInButton" title="Click to zoom in" />
 							</div>
 							<div class="flex-centeralign toolbar-section">

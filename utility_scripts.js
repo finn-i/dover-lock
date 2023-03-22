@@ -606,7 +606,7 @@ function loadAudio(audio, sectionData) {
       // fixes blank waveform/regions when loading Current -> Prev.1 -> Prev.2
       zoomSlider.value = 25;
       zoomSlider.dispatchEvent(new Event("input"));
-      wavesurfer.zoom(25)
+      wavesurfer.zoom(50 / 4);
       hideAudioLoader();
    });
 
@@ -1449,7 +1449,7 @@ function loadAudio(audio, sectionData) {
    });
 
    zoomSlider.addEventListener('input', function() { // slider changes waveform zoom
-      wavesurfer.zoom(Number(this.value)); 
+      wavesurfer.zoom(Number(this.value) / 4); 
       if (currentRegion.speaker && getCurrentRegionIndex() != -1) { 
          setHoverSpeaker(currSpeakerSet.tempSpeakerObjects[getCurrentRegionIndex()].region.element.style.left, currentRegion.speaker);
          drawCurrentRegionBounds();
@@ -2493,6 +2493,10 @@ function loadAudio(audio, sectionData) {
       } else {
          audioContainer.requestFullscreen();
       }
+      setTimeout(() => {
+         zoomOutButton.click(); // ensures waveform shows  
+         zoomInButton.click(); // ensures waveform shows  
+      }, 150);
    }
 }
 
