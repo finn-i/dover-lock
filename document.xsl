@@ -126,54 +126,88 @@
 			</xsl:choose>
 		</gsf:variable>
 
-		<!-- <script type="text/javascript">
-			<xsl:text disable-output-escaping="yes">
-				$(document).ready(function() {
-					loadAudio('</xsl:text><xsl:value-of select="$httpPath"/>/index/assoc/<gsf:metadata name="assocfilepath" pos="1"/>/<gsf:metadata name="Source"/><xsl:text disable-output-escaping="yes">',
-					'</xsl:text>interfaces/{$interface_name}/images/Te_Kakano_C9B.csv<xsl:text disable-output-escaping="yes">');
-				})
-			</xsl:text>
-		</script> -->
+		<gsf:variable name="metadataServerURL">
+			<xsl:value-of select="$metadata-server-url"/>
+		</gsf:variable>
 
 		<!-- userEditMode = <xsl:value-of select="$userHasEditPermission"/> -->
+
+		<!-- <xsl:variable name ="get-archives-assocfile"><xsl:value-of select="$metadata-server-url"/><xsl:text disable-output-escaping="yes">?a=get-archives-assocfile&amp;</xsl:text></xsl:variable> -->
+		<!-- <xsl:variable name="site-col-doc">site=<xsl:value-of select="$site_name"/><xsl:text disable-output-escaping="yes">&amp;c=</xsl:text><xsl:value-of select="$collName"/><xsl:text disable-output-escaping="yes">&amp;d=</xsl:text><xsl:value-of select="$docID"/></xsl:variable> -->
 
 		<script type="text/javascript">
 			<xsl:text disable-output-escaping="yes">
 				$(document).ready(function() {
-					loadAudio('</xsl:text><xsl:value-of select="$httpPath"/>/index/assoc/<gsf:metadata name="assocfilepath" pos="1"/>/<gsf:metadata name="Audio"/><xsl:text disable-output-escaping="yes">',
-					'</xsl:text><xsl:value-of select="$httpPath"/>/index/assoc/<gsf:metadata name="assocfilepath" pos="1"/>/structured-audio.csv<xsl:text disable-output-escaping="yes">');
+					if (gs.variables.allowEditing) {
+						loadAudio(gs.variables.metadataServerURL+'?a=get-archives-assocfile&amp;site='+gs.xsltParams.site_name+'&amp;c='+gs.cgiParams.c+'&amp;d='+gs.cgiParams.d+'&amp;assocname='+gs.documentMetadata.Audio,
+											gs.variables.metadataServerURL+'?a=get-archives-assocfile&amp;site='+gs.xsltParams.site_name+'&amp;c='+gs.cgiParams.c+'&amp;d='+gs.cgiParams.d+'&amp;assocname=structured-audio.csv');
+					} else {
+						loadAudio('</xsl:text><xsl:value-of select="$httpPath"/><xsl:text disable-output-escaping="yes">/index/assoc/' + gs.documentMetadata.assocfilepath + '/' + gs.documentMetadata.Audio,
+						'</xsl:text><xsl:value-of select="$httpPath"/>/index/assoc/' + gs.documentMetadata.assocfilepath + '/structured-audio.csv<xsl:text disable-output-escaping="yes">');
+					}
 				})
 			</xsl:text>
 		</script>
 
 		<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"><xsl:text> </xsl:text></script>
+		<script type="text/javascript" src="https://code.jquery.com/ui/1.13.2/jquery-ui.js"><xsl:text> </xsl:text></script>
 		<script type="text/javascript" src="https://unpkg.com/wavesurfer.js"><xsl:text> </xsl:text></script>
 		<script type="text/javascript" src="https://unpkg.com/wavesurfer.js/dist/plugin/wavesurfer.regions.min.js"><xsl:text> </xsl:text></script>
 		<script type="text/javascript" src="https://unpkg.com/wavesurfer.js/dist/plugin/wavesurfer.timeline.min.js"><xsl:text> </xsl:text></script>
 		<script type="text/javascript" src="https://unpkg.com/wavesurfer.js/dist/plugin/wavesurfer.cursor.min.js"><xsl:text> </xsl:text></script>
 		<script type="text/javascript" src="https://d3js.org/colorbrewer.v1.min.js"><xsl:text> </xsl:text></script>
-
+				<div id="save-popup-bg"><xsl:text> </xsl:text></div>
+				<div id="save-popup">
+					<span>Commit changes:</span> 
+					<textarea id="commit-message" placeholder="Commit message" rows="2"><xsl:text> </xsl:text></textarea>
+					<div class="flex-centeralign">
+						<button class="ui-button" id="save-popup-cancel">Cancel</button>
+						<button class="ui-button" id="save-popup-commit">Commit</button>
+					</div>
+				</div>
+				<!-- <div id="lock-popup">
+					<span>Locked region:</span>
+					You are attempting to edit a locked region, proceed?
+					<div class="flex-centeralign">
+						<button class="ui-button" id="save-popup-cancel">Cancel</button>
+						<button class="ui-button" id="save-popup-commit">Edit</button>
+					</div>
+				</div> -->
         <div id="audioContainer" tabindex="0">
 						<div id="context-menu">
-							<div class="context-menu-item" id="context-menu-delete">Delete Selected</div>
 							<div class="context-menu-item" id="context-menu-replace">Replace Selected Down</div>
 							<div class="context-menu-item" id="context-menu-overdub">Overdub Selected Down</div>
-							<!-- <div class="context-menu-item" id="context-menu-copy">Copy Selected Down</div> -->
-							<div class="context-menu-item" id="context-menu-save">Save Selected Set</div>
+							<div class="context-menu-item" id="context-menu-lock">Lock Selected</div>
+							<div class="context-menu-item" id="context-menu-delete">Delete Selected</div>
 						</div>
-            <div id="hover-speaker"><text> </text></div>
+            <div id="hover-speaker"><xsl:text> </xsl:text></div>
 						<div id="caret-container">
 							<img src="interfaces/{$interface_name}/images/bootstrap/caret-right-fill.svg" id="primary-caret" />
 							<img src="interfaces/{$interface_name}/images/bootstrap/caret-right.svg" id="secondary-caret" />
 						</div>
+						<div id="version-select-menu"><xsl:text> </xsl:text></div>
             <div id="waveform">
-							<img src="interfaces/{$interface_name}/images/bootstrap/gear.svg" id="dual-mode-menu-button" />
-							<div id="dual-mode-menu">
-								<div class="dual-mode-menu-item" id="dual-mode-menu-normal">Show Normal</div>
-								<div class="dual-mode-menu-item" id="dual-mode-menu-conflicts">Show Conflicts</div>
+							<div id="waveform-blocker"><div id="waveform-spinner"><xsl:text> </xsl:text></div></div>
+							<span id="waveform-loader">Loading audio</span>
+							<div class="track-set-label" id="track-set-label-top">
+								<span>Current</span>
+								<img class="track-arrow" src="interfaces/{$interface_name}/images/bootstrap/caret-right.svg"/>
+							</div>
+							<div class="track-set-label" id="track-set-label-bottom">
+								<span>nminus-1</span>
+								<img class="track-arrow" src="interfaces/{$interface_name}/images/bootstrap/caret-right.svg"/>
+							</div>
+							<img src="interfaces/{$interface_name}/images/bootstrap/gear.svg" id="timeline-menu-button" />
+							<div id="timeline-menu">
+								<div class="timeline-menu-item" id="timeline-menu-hide">Hide Regions <input type="checkbox" /></div>
+								<div class="timeline-menu-item" id="timeline-menu-dualmode">Dual Mode <input type="checkbox" id="dual-mode-checkbox" /></div>
+								<hr></hr>
+								<div class="timeline-menu-subtext">Show Differences</div>
+								<div class="timeline-menu-item disabled" id="timeline-menu-region">Region:Start/Stop <input type="checkbox" /></div>
+								<div class="timeline-menu-item disabled" id="timeline-menu-speaker">Speaker Label <input type="checkbox" /></div>
 							</div>
 						</div>
-            <div id="wave-timeline"><text> </text></div>
+            <div id="wave-timeline"><xsl:text> </xsl:text></div>
             <div id="toolbar">
 							<div class="flex-leftalign toolbar-section">
 								<img src="interfaces/{$interface_name}/images/bootstrap/chapters.svg" id="chapterButton" title="Click to expand audio chapters" />
@@ -197,7 +231,13 @@
 							</div>
             </div>
 						<div id="audio-dropdowns">
-							<div id="chapters"><text></text></div>
+							<div id="chapters-container">
+								<div id="chapter-search-box">
+									<img src="interfaces/{$interface_name}/images/bootstrap/funnel.svg" />
+								 	<input type="text" placeholder="Search.." id="chapter-search-input" maxlength="40" />
+								</div>
+								<div id="chapters"><text></text></div>
+							</div>
 							<div id="edit-panel">
 								<button class="ui-button" id="create-button" title="Create a new region">Create New Region</button>
 								<div class="flex-row" id="save-discard">
@@ -209,10 +249,6 @@
 								<div>
 									<div class="flex-row selected-header">
 										<h3>Selected Region:</h3>
-										<div>
-											<input type="checkbox" id="dual-mode-checkbox" name="change-speaker" />
-											<label id="dual-mode-label" for="dual-mode-checkbox">Dual mode</label>
-										</div>
 									</div>
 									<div class="flex-row selected-header" >
 										Speaker:&#160;&#160;&#160;&#160;
@@ -246,10 +282,7 @@
 								<button class="ui-button" id="remove-button" title="Remove the selected region">Remove Selected Region</button>
 							</div>
 						</div>
-        </div>
-		<!-- Download: <gsf:link type="source"><gsf:metadata name="Source"/></gsf:link> -->
-		
-
+        </div>		
 	</xsl:template>
 
 	<xsl:template name="documentNodeText">
