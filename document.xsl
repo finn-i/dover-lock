@@ -151,10 +151,10 @@
 
 		<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"><xsl:text> </xsl:text></script>
 		<script type="text/javascript" src="https://code.jquery.com/ui/1.13.2/jquery-ui.js"><xsl:text> </xsl:text></script>
-		<script type="text/javascript" src="https://unpkg.com/wavesurfer.js"><xsl:text> </xsl:text></script>
-		<script type="text/javascript" src="https://unpkg.com/wavesurfer.js/dist/plugin/wavesurfer.regions.min.js"><xsl:text> </xsl:text></script>
-		<script type="text/javascript" src="https://unpkg.com/wavesurfer.js/dist/plugin/wavesurfer.timeline.min.js"><xsl:text> </xsl:text></script>
-		<script type="text/javascript" src="https://unpkg.com/wavesurfer.js/dist/plugin/wavesurfer.cursor.min.js"><xsl:text> </xsl:text></script>
+		<script type="text/javascript" src="https://unpkg.com/wavesurfer.js@6.6.0/dist/wavesurfer.js"><xsl:text> </xsl:text></script>
+		<script type="text/javascript" src="https://unpkg.com/wavesurfer.js@6.6.0/dist/plugin/wavesurfer.regions.min.js"><xsl:text> </xsl:text></script>
+		<script type="text/javascript" src="https://unpkg.com/wavesurfer.js@6.6.0/dist/plugin/wavesurfer.timeline.min.js"><xsl:text> </xsl:text></script>
+		<script type="text/javascript" src="https://unpkg.com/wavesurfer.js@6.6.0/dist/plugin/wavesurfer.cursor.min.js"><xsl:text> </xsl:text></script>
 		<script type="text/javascript" src="https://d3js.org/colorbrewer.v1.min.js"><xsl:text> </xsl:text></script>
 				<div id="save-popup-bg"><xsl:text> </xsl:text></div>
 				<div id="save-popup">
@@ -165,14 +165,10 @@
 						<button class="ui-button" id="save-popup-commit">Commit</button>
 					</div>
 				</div>
-				<!-- <div id="lock-popup">
-					<span>Locked region:</span>
-					You are attempting to edit a locked region, proceed?
-					<div class="flex-centeralign">
-						<button class="ui-button" id="save-popup-cancel">Cancel</button>
-						<button class="ui-button" id="save-popup-commit">Edit</button>
-					</div>
-				</div> -->
+				<div id="caret-container">
+					<img src="interfaces/{$interface_name}/images/bootstrap/caret-right-fill.svg" id="primary-caret" />
+					<img src="interfaces/{$interface_name}/images/bootstrap/caret-right.svg" id="secondary-caret" />
+				</div>
         <div id="audioContainer" tabindex="0">
 						<div id="context-menu">
 							<div class="context-menu-item" id="context-menu-replace">Replace Selected Down</div>
@@ -180,39 +176,37 @@
 							<div class="context-menu-item" id="context-menu-lock">Lock Selected</div>
 							<div class="context-menu-item" id="context-menu-delete">Delete Selected</div>
 						</div>
-            <div id="hover-speaker"><xsl:text> </xsl:text></div>
-						<div id="caret-container">
-							<img src="interfaces/{$interface_name}/images/bootstrap/caret-right-fill.svg" id="primary-caret" />
-							<img src="interfaces/{$interface_name}/images/bootstrap/caret-right.svg" id="secondary-caret" />
+						<div id="timeline-menu">
+							<div class="timeline-menu-item" id="timeline-menu-hide">Hide Regions <input type="checkbox" /></div>
+							<div class="timeline-menu-item" id="timeline-menu-dualmode">Dual Mode <input type="checkbox" id="dual-mode-checkbox" /></div>
+							<hr></hr>
+							<div class="timeline-menu-subtext">Show Differences</div>
+							<div class="timeline-menu-item disabled" id="timeline-menu-region">Region:Start/Stop <input type="checkbox" /></div>
+							<div class="timeline-menu-item disabled" id="timeline-menu-speaker">Speaker Label <input type="checkbox" /></div>
 						</div>
+            <div id="hover-speaker"><xsl:text> </xsl:text></div>
 						<div id="version-select-menu"><xsl:text> </xsl:text></div>
             <div id="waveform">
 							<div id="waveform-blocker"><div id="waveform-spinner"><xsl:text> </xsl:text></div></div>
 							<span id="waveform-loader">Loading audio</span>
 							<div class="track-set-label" id="track-set-label-top">
-								<span>Current</span>
-								<img class="track-arrow" src="interfaces/{$interface_name}/images/bootstrap/caret-right.svg"/>
+								<!-- <div class="version-select-menu-class"> -->
+									<span>Current</span>
+									<img class="track-arrow" src="interfaces/{$interface_name}/images/bootstrap/caret-right.svg"/>
+								<!-- </div> -->
 							</div>
 							<div class="track-set-label" id="track-set-label-bottom">
 								<span>nminus-1</span>
 								<img class="track-arrow" src="interfaces/{$interface_name}/images/bootstrap/caret-right.svg"/>
 							</div>
 							<img src="interfaces/{$interface_name}/images/bootstrap/gear.svg" id="timeline-menu-button" />
-							<div id="timeline-menu">
-								<div class="timeline-menu-item" id="timeline-menu-hide">Hide Regions <input type="checkbox" /></div>
-								<div class="timeline-menu-item" id="timeline-menu-dualmode">Dual Mode <input type="checkbox" id="dual-mode-checkbox" /></div>
-								<hr></hr>
-								<div class="timeline-menu-subtext">Show Differences</div>
-								<div class="timeline-menu-item disabled" id="timeline-menu-region">Region:Start/Stop <input type="checkbox" /></div>
-								<div class="timeline-menu-item disabled" id="timeline-menu-speaker">Speaker Label <input type="checkbox" /></div>
-							</div>
 						</div>
             <div id="wave-timeline"><xsl:text> </xsl:text></div>
-            <div id="toolbar">
+            <div id="audio-toolbar">
 							<div class="flex-leftalign toolbar-section">
 								<img src="interfaces/{$interface_name}/images/bootstrap/chapters.svg" id="chapterButton" title="Click to expand audio chapters" />
 								<img src="interfaces/{$interface_name}/images/bootstrap/zoom-out.svg" id="zoomOutButton" title="Click to zoom out" />
-								<input type="range" min="0" max="150" value="50" id="zoom-slider" step="5" title="Click and drag to adjust zoom level" />
+								<input type="range" min="0" max="100" value="25" id="zoom-slider" step="10" title="Click and drag to adjust zoom level" />
 								<img src="interfaces/{$interface_name}/images/bootstrap/zoom-in.svg" id="zoomInButton" title="Click to zoom in" />
 							</div>
 							<div class="flex-centeralign toolbar-section">
@@ -274,8 +268,8 @@
 									</div>
 									&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;
 									<div class="time-label-container">
-											<input class="time-label" type="text" value="hh" readonly="true" disabled="true" />&#160;&#160;
-											<input class="time-label" type="text" value="mm" readonly="true" disabled="true" />&#160;&#160;
+											<input class="time-label" type="text" value="hh" readonly="true" disabled="true" />&#160;
+											<input class="time-label" type="text" value="mm" readonly="true" disabled="true" />&#160;
 											<input class="time-label" type="text" value="ss" readonly="true" disabled="true" />
 										</div>
 								</div>

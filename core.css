@@ -1390,6 +1390,7 @@ width:100%
 }
 
 #audioContainer {
+		position: relative;
     width: 100%;
 		overflow: hidden;
 		font-family: 'Courier New', monospace;
@@ -1408,11 +1409,11 @@ width:100%
 #waveform {
     background-color: white;
 		position: relative;
-		overflow-y: none;
+		overflow-y: hidden;
 }
 
-#toolbar {
-	background-color: rgb(20, 30, 32);
+#audio-toolbar {
+	background-color: rgb(16, 24, 26);
     position: relative;
     display: flex;
     flex-direction: row;
@@ -1424,7 +1425,7 @@ width:100%
     height: fit-content;
 }
 
-#toolbar button {
+#audio-toolbar button {
     cursor: pointer;
     height: 100%;
 }
@@ -1565,13 +1566,14 @@ width:100%
 	height: 8rem;
 	width: 1.5rem;
 	margin-top: -8rem;
-	padding-left: 1rem; 
+	padding-left: 1rem;
 	padding-right: 1rem;
 	margin-left: -1rem;
-	/* box-shadow: 0 0 15px; */
-	border-radius: 50%;
+	/* border-radius: 50%; */
 	-webkit-appearance: slider-vertical; /* chrome */
 	writing-mode: bt-lr; /* IE */
+	box-shadow: 0 0 10px 2px #000; /* bad results on chrome (and probably safari) */
+	/* -webkit-box-shadow: 0 0 10px 2px #000; */
 }
 
 #volume-container {
@@ -1584,8 +1586,7 @@ width:100%
 	display: inline;
 }
 
-/* Limit scope of the following to only canvases within a audioContainer div */
-#audioContainer canvas {
+#audioContainer canvas { /* Limit scope of the following to only canvases within a audioContainer div */
 	/* transition: width 0.5s ease; */
 	/* z-index: 4 !important; */
 	pointer-events: none;
@@ -1701,7 +1702,7 @@ wave {
 	right: 0;
 	color: white;
 	overflow-y: hidden;
-	transition: height 0.4s ease, padding 0.4s ease;
+	transition: height 0.2s ease, padding 0.2s ease;
 	box-sizing: border-box; /* ensures padding doesn't modify width */
 	font-family: 'Courier New', monospace;
 	font-size: 0.85rem;
@@ -1867,7 +1868,7 @@ input::-webkit-inner-spin-button {
 		z-index: 1 !important;
 		height: 60% !important;
 		top: 20% !important;
-		border: 1px solid #000;
+		/* border: 1px solid #000; */
 		/* transition: width 2s ease; */
 }
 
@@ -1912,7 +1913,8 @@ input::-webkit-inner-spin-button {
 	width: 20px; /* match gs_content padding */
 	flex-direction: column;
 	justify-content: space-evenly;
-	left: -4px; /* padding */
+	left: 0; /* padding */
+	padding-top: 2rem;
 	display: none;
 }
 
@@ -1920,6 +1922,7 @@ input::-webkit-inner-spin-button {
 	cursor: pointer;
 	filter: none;
 	opacity: 0.85;
+	width: 1.5rem;
 }
 
 #caret-container img:hover {
@@ -1939,7 +1942,7 @@ input::-webkit-inner-spin-button {
 	width: 200px;
 	background: rgb(20, 30, 32);
 	box-shadow: 1px 1px 15px -5px black;
-	border-radius: 5px;
+	/* border-radius: 5px; */
 	display: none;
 	border: 1px solid #eee;
 }
@@ -1981,10 +1984,10 @@ input::-webkit-inner-spin-button {
 	width: 200px;
 	background: rgb(20, 30, 32);
 	box-shadow: 1px 1px 15px -5px black;
-	border-radius: 5px;
-	z-index: 10;
+	/* border-radius: 5px; */
+	z-index: 12;
 	display: none;
-	margin: 0.2rem 0;
+	margin: 2.2rem 0;
 	border: 1px solid #eee;
 }
 
@@ -2060,10 +2063,10 @@ input::-webkit-inner-spin-button {
 	max-height: 30vh;
 	font-size: 14px;
 	color: white;
-	transition: background-color 0.3s ease, height 0.3s ease;
+	transition: background-color 0.2s ease, height 0.2s ease;
 	user-select: none;
 	resize: horizontal;
-	overflow:auto;
+	overflow: auto;
 }
 
 #chapters-container img {
@@ -2111,6 +2114,7 @@ input::-webkit-inner-spin-button {
 
 .track-set-label {
 	position: absolute;
+	max-width: 150px;
 	left: 0.2rem;
 	color: #eee;
 	font-size: 14px;
@@ -2124,22 +2128,22 @@ input::-webkit-inner-spin-button {
 .track-arrow {
 	position: relative;
 	width: 1.5em !important;
-	/* margin-left: 0.2rem; */
 	transform: rotate(90deg);
 	vertical-align: text-bottom;
 	z-index: 20;
+	/* transition: transform 0.2s ease-in-out; */
 }
 
 #version-select-menu {
 	position: absolute;
-	width: 115px;
-	/* left: 120px; */
+	display: none;
+	z-index: 21;
 	background: rgb(20, 30, 32);
 	box-shadow: 1px 1px 15px -5px black;
-	border-radius: 5px;
-	z-index: 15;
-	display: none;
+	/* border-radius: 5px; */
 	border: 1px solid #eee;
+	overflow-y: auto;
+	margin: 2px;
 }
 
 #version-select-menu.visible {
@@ -2168,7 +2172,7 @@ input::-webkit-inner-spin-button {
 	height: 9vh;
 	background: rgb(20, 30, 32);
 	border: 1px solid #ffffff70;
-	border-radius: 5px;
+	/* border-radius: 5px; */
 	box-shadow: 1px 1px 15px -5px black;
 	z-index: 1000;
 	padding: 0.5rem 0.5rem 2rem 0.5rem;
@@ -2214,5 +2218,6 @@ input::-webkit-inner-spin-button {
 
 :root { /* css vars */
 	--audio-accent-colour: #66d640;
-	--audio-bg-colour: rgb(40, 54, 58);
+	/* --audio-bg-colour: rgb(40, 54, 58); */
+	--audio-bg-colour: rgb(29, 43, 47);
 }
