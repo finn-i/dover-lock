@@ -343,7 +343,7 @@ function loadAudio(audio, sectionData) {
       progressColor: accentColour,
       // progressColor: "grey",
       // barWidth: 1,
-      barHeight: 1.2,
+      // barHeight: 1.2,
       // barGap: 2,
       // barRadius: 1,
       height: 140,
@@ -461,7 +461,7 @@ function loadAudio(audio, sectionData) {
 
    function getIndexOfRegion(region) {
       for (const reg of currSpeakerSet.tempSpeakerObjects) {
-         if (reg.start == region.start && reg.end == region.end && reg.speaker == region.attributes.label.innerText) {
+         if (region.attributes && reg.start == region.start && reg.end == region.end && reg.speaker == region.attributes.label.innerText) {
             return currSpeakerSet.tempSpeakerObjects.indexOf(reg);
          }
       }
@@ -521,12 +521,12 @@ function loadAudio(audio, sectionData) {
    wavesurfer.on('error', error => console.log(error));
    
    wavesurfer.on('ready', function() { // retrieve regions once waveforms have loaded
-      window.onbeforeunload = (e) => {
-         if (undoStates.length > 0) {
-            e.returnValue = "Data will be lost if you leave the page, are you sure?";
-            return "Data will be lost if you leave the page, are you sure?";
-         }
-      };
+      // window.onbeforeunload = (e) => {
+      //    if (undoStates.length > 0) {
+      //       e.returnValue = "Data will be lost if you leave the page, are you sure?";
+      //       return "Data will be lost if you leave the page, are you sure?";
+      //    }
+      // };
       if (document.getElementById('new-canvas')) document.getElementById('new-canvas').remove();
       setTimeout(() => { // if not delayed exportImage does not retrieve waveform (despite being in waveform-ready?)
          const currVersion = selectedVersions[(!dualMode || primaryCaret.src.includes("fill")) ? 0 : 1];
@@ -1616,8 +1616,6 @@ function loadAudio(audio, sectionData) {
       else for (const reg of regions) reg.style.setProperty("z-index", "1", "important");
 
       chapterSearchInput.dispatchEvent(new Event("input"));
-      // zoomInButton.click(); // llllll 
-      // zoomOutButton.click();
    }
 
    function loadJSONFile(filename) {
@@ -1817,7 +1815,7 @@ function loadAudio(audio, sectionData) {
 
       handleSameSpeakerOverlap(getCurrentRegionIndex(), currSpeakerSet); // recalculate index in case start pos has changed
       addUndoState(primarySet, secondarySet, currSpeakerSet.isSecondary, dualMode, "dragdrop", getCurrentRegionIndex());
-      editLockedRegion(currSpeakerSet.tempSpeakerObjects[regionIndex]); 
+      editLockedRegion(currSpeakerSet.tempSpeakerObjects[regionIndex], chaps); 
 
       editPanel.click(); // fixes buttons needing to be clicked twice (unknown cause!)
    }
@@ -1825,8 +1823,13 @@ function loadAudio(audio, sectionData) {
    function editLockedRegion(region) { // ensures user is aware region being edited is locked
       if (region.locked) {
          let confirm = false;
-         confirm = window.confirm("You are attempting to edit a locked region, are you sure you want to continue?"); 
-         if (!confirm) undo();
+         confirm = window.confirm("Editing a locked region will unlock it, are you sure you want to continue?"); 
+         if (!confirm) undo(); // undo change if no
+         else { // remove lock if yes
+            region.locked = false; 
+            if (region.region.element.firstChild) region.region.element.firstChild.remove();
+            if (chapters.childNodes[getCurrentRegionIndex()].childNodes[1].tagName === "IMG") chapters.childNodes[getCurrentRegionIndex()].childNodes[1].classList.add('hide'); 
+         }
       }
    }
 
@@ -2491,12 +2494,18 @@ function loadAudio(audio, sectionData) {
         (document.msFullscreenElement && document.msFullscreenElement !== null)) {
          document.exitFullscreen();
       } else {
-         audioContainer.requestFullscreen();
+         if (audioContainer.requestFullscreen) {
+            audioContainer.requestFullscreen();
+         } else if (audioContainer.webkitRequestFullscreen) { /* Safari */
+            audioContainer.webkitRequestFullscreen();
+         } else if (audioContainer.msRequestFullscreen) { /* IE11 */
+            audioContainer.msRequestFullscreen();
+         }
       }
-      setTimeout(() => {
-         zoomOutButton.click(); // ensures waveform shows  
-         zoomInButton.click(); // ensures waveform shows  
-      }, 150);
+      setTimeout(() => { // ensures waveform shows  
+         zoomOutButton.click();
+         zoomInButton.click();
+      }, 250);
    }
 }
 
