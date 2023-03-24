@@ -1467,15 +1467,11 @@ width:100%
 	pointer-events: none !important;
 }
 
-@supports (-moz-appearance:none) {
+@supports (-moz-appearance:none) { /* bad results in chrome, safari not tested */
 	.audio-scroll {
 		scroll-behavior: smooth;
 	}
 }
-
-/* .audio-scroll {
-	scroll-behavior: smooth;
-} */
 
 .audio-scroll::-webkit-scrollbar {
   height: 6px;
@@ -1497,7 +1493,6 @@ width:100%
     border-color: grey;
     border-style: solid;
     border-width: 1px 0 0 0;
-    /* border-top-right-radius: 5px; */
     border-top-left-radius: 5px;
     padding: 0.5rem;
     transition: 0.1s ease;
@@ -1573,7 +1568,6 @@ width:100%
 	-webkit-appearance: slider-vertical; /* chrome */
 	writing-mode: bt-lr; /* IE */
 	box-shadow: 0 0 10px 2px #000; /* bad results on chrome (and probably safari) */
-	/* -webkit-box-shadow: 0 0 10px 2px #000; */
 }
 
 #volume-container {
@@ -1587,7 +1581,6 @@ width:100%
 }
 
 #audioContainer canvas { /* Limit scope of the following to only canvases within a audioContainer div */
-	/* transition: width 0.5s ease; */
 	/* z-index: 4 !important; */
 	pointer-events: none;
 }

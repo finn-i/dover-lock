@@ -292,13 +292,19 @@ function loadTKMetadataSet(lang, type) {
 
 var wavesurfer;
 
+/**
+ * @param audio input audio file
+ * @param sectionData diarization data (.csv)
+ */
 function loadAudio(audio, sectionData) {
-   // console.log('loadAudio')
+   const inputFile = sectionData;
+   const mod_meta_base_url = gs.xsltParams.library_name + "?a=g&rt=r&ro=0&s=ModifyMetadata&s1.collection=" + gs.cgiParams.c + "&s1.site=" + gs.xsltParams.site_name + "&s1.d=" + gs.cgiParams.d;
+   const interface_bootstrap_images = "interfaces/" + gs.xsltParams.interface_name + "/images/bootstrap/"; // path to toolbar images
+
    let editMode = false;
    let currentRegion = {speaker: '', start: '', end: ''};
    let currentRegions = [];
 
-   const inputFile = sectionData;
    let itemType;
 
    let dualMode = false;
@@ -328,10 +334,11 @@ function loadAudio(audio, sectionData) {
    let colourbrewerSet = colorbrewer.Set2[8];
    let regionColourSet = [];
 
-   const mod_meta_base_url = gs.xsltParams.library_name + "?a=g&rt=r&ro=0&s=ModifyMetadata&s1.collection=" + gs.cgiParams.c + "&s1.site=" + gs.xsltParams.site_name + "&s1.d=" + gs.cgiParams.d;
-   const interface_bootstrap_images = "interfaces/" + gs.xsltParams.interface_name + "/images/bootstrap/"; // path to toolbar images
 
    let waveformContainer = document.getElementById("waveform");
+   let waveformSpinner = document.getElementById('waveform-blocker');
+   let loader = document.getElementById('waveform-loader');
+   let initialLoad = true;
    
    wavesurfer = WaveSurfer.create({ // wavesurfer options
       autoCenterImmediately: true,
@@ -381,315 +388,6 @@ function loadAudio(audio, sectionData) {
          }),
       ],
    });
-
-   wavesurfer.load(audio);
-
-   // wavesurfer events
-
-   wavesurfer.on('region-click', handleRegionClick);
-
-   function handleRegionClick(region, e) { 
-      contextMenu.classList.remove('visible');
-      e.stopPropagation();
-      if (!editMode) { // play region audio on click
-         wavesurfer.play(region.start); // plays from start of region
-      } else { // select or deselect current region
-         if (!region.element) return;
-         if (region.element.classList.contains("region-top")) {
-            currSpeakerSet = primarySet;
-            swapCarets(true);
-         } else if (region.element.classList.contains("region-bottom")) {
-            currSpeakerSet = secondarySet;
-            swapCarets(false);
-         }
-         prevUndoState = "";
-
-         if (!e.ctrlKey && !e.shiftKey) {
-            currentRegions = [];
-            currentRegion = region;
-            currentRegion.speaker = currentRegion.attributes.label.innerText;
-            wavesurfer.backend.seekTo(currentRegion.start);
-         } else if (e.ctrlKey) { // control was held during click
-            if (currentRegions.length == 0 && isCurrentRegion(region)) {
-               removeCurrentRegion();
-            } else if (getCurrentRegionIndex() != -1 && isInCurrentRegions(region)) {
-               const removeIndex = getIndexInCurrentRegions(region);
-               if (removeIndex != -1) currentRegions.splice(removeIndex, 1);
-               if (currentRegions.length > 0 && isCurrentRegion(region)) { // change current region if removed
-                  currentRegion = currentRegions[0];
-               }
-            } else {
-               if (currentRegions.length < 1) currentRegions.push(currentRegion);
-               if (getIndexInCurrentRegions(region) == -1) currentRegions.push(region); // add if it doesn't already exist
-               currentRegion = region;
-               currentRegion.speaker = currentRegion.attributes.label.innerText;
-               wavesurfer.backend.seekTo(currentRegion.start); 
-            }
-            if (currentRegions.length == 1)  currentRegions = []; // clear selected regions if there is only one
-         } else if (e.shiftKey) { // shift was held during click
-            clearChapterSearch();
-            if (getCurrentRegionIndex() != -1 && getIndexOfRegion(region) != -1) {
-               if (currentRegions && currentRegions.length > 0) {
-                  if (Math.max(...getCurrentRegionsIndexes()) < getIndexOfRegion(region)) { // shifting forwards / down
-                     currentRegions = currSpeakerSet.tempSpeakerObjects.slice(Math.min(...getCurrentRegionsIndexes()), getIndexOfRegion(region)+1);
-                  } else { // shifting backwards / up
-                     currentRegions = currSpeakerSet.tempSpeakerObjects.slice(getIndexOfRegion(region), Math.max(...getCurrentRegionsIndexes())+1);
-                  }
-               } else {
-                  if (getCurrentRegionIndex() < getIndexOfRegion(region)) { // shifting forwards / down
-                     currentRegions = currSpeakerSet.tempSpeakerObjects.slice(getCurrentRegionIndex(), getIndexOfRegion(region)+1);
-                  } else { // shifting backwards / up
-                     currentRegions = currSpeakerSet.tempSpeakerObjects.slice(getIndexOfRegion(region), getCurrentRegionIndex()+1);
-                  }
-               }
-            }
-         }
-         if (changeAllCheckbox.checked) { currentRegions = getRegionsWithSpeaker(currentRegion.speaker) } 
-         reloadRegionsAndChapters();
-      }
-   }
-
-   function getIndexInCurrentRegions(region) {
-      for (const reg of currentRegions) {
-         const regSpeaker = reg.attributes ? reg.attributes.label.innerText : reg.speaker;
-         if (reg.start == region.start && reg.end == region.end && regSpeaker == region.attributes.label.innerText) {
-            return currentRegions.indexOf(reg);
-         }
-      }
-      return -1;
-   }
-
-   function getIndexOfRegion(region) {
-      for (const reg of currSpeakerSet.tempSpeakerObjects) {
-         if (region.attributes && reg.start == region.start && reg.end == region.end && reg.speaker == region.attributes.label.innerText) {
-            return currSpeakerSet.tempSpeakerObjects.indexOf(reg);
-         }
-      }
-      return -1;
-   }
-
-   wavesurfer.on('region-mouseenter', function(region) { // region hover effects
-      if (!mouseDown) {
-         handleRegionColours(region, true); 
-         setHoverSpeaker(region.element.style.left, region.attributes.label.innerText);
-         if (!isInCurrentRegions(region)) {
-            removeRegionBounds();
-            drawRegionBounds(region, wave.scrollLeft, "black");
-         }
-         if (isCurrentRegion(region) && editMode) drawRegionBounds(region, wave.scrollLeft, "FireBrick");
-      }
-   });
-
-   function setHoverSpeaker(offset, name) {
-      hoverSpeaker.innerHTML = name;  
-      let newOffset = parseInt(offset.slice(0, -2)) - wave.scrollLeft;
-      hoverSpeaker.style.marginLeft = newOffset + "px";
-   }
-
-   wavesurfer.on('region-mouseleave', function(region) { 
-      hoverSpeaker.innerHTML = "";
-      if (!mouseDown) {
-         if (!(wavesurfer.getCurrentTime() <= region.end && wavesurfer.getCurrentTime() >= region.start)) handleRegionColours(region, false); 
-         if (!editMode) hoverSpeaker.innerHTML = "";
-         removeRegionBounds();
-         if (currentRegion && currentRegion.speaker && getCurrentRegionIndex() != -1) { 
-            setHoverSpeaker(currSpeakerSet.tempSpeakerObjects[getCurrentRegionIndex()].region.element.style.left, currentRegion.speaker);
-            drawCurrentRegionBounds();
-         } 
-      }
-   });
-   wavesurfer.on('region-in', function(region) { 
-      if (!mouseDown) {
-         handleRegionColours(region, true); 
-         if (itemType == "chapter" && Array.from(chapters.children)[getIndexOfRegion(region)]) {
-            Array.from(chapters.children)[getIndexOfRegion(region)].scrollIntoView({  
-               behavior: "smooth",
-               block: "nearest"
-            });
-         }
-      }
-   });
-   wavesurfer.on('region-out', function(region) { handleRegionColours(region, false) });
-   wavesurfer.on('region-update-end', handleRegionEdit); // end of click-drag event
-   wavesurfer.on('region-updated', handleRegionSnap);
-
-   let loader = document.getElementById('waveform-loader');
-   let waveformSpinner = document.getElementById('waveform-blocker');
-
-   let initialLoad = true;
-
-   wavesurfer.on('error', error => console.log(error));
-   
-   wavesurfer.on('ready', function() { // retrieve regions once waveforms have loaded
-      // window.onbeforeunload = (e) => {
-      //    if (undoStates.length > 0) {
-      //       e.returnValue = "Data will be lost if you leave the page, are you sure?";
-      //       return "Data will be lost if you leave the page, are you sure?";
-      //    }
-      // };
-      if (document.getElementById('new-canvas')) document.getElementById('new-canvas').remove();
-      setTimeout(() => { // if not delayed exportImage does not retrieve waveform (despite being in waveform-ready?)
-         const currVersion = selectedVersions[(!dualMode || primaryCaret.src.includes("fill")) ? 0 : 1];
-         for (let key in canvasImages) {
-            if (currVersion == key && canvasImages[key] == undefined) { canvasImages[key] = wavesurfer.exportImage() } // add waveform image to cache if one isn't already assigned to the version
-         }
-      }, 1000);
-
-      if (initialLoad) {
-         if (inputFile.endsWith("csv")) { // diarization if csv
-            itemType = "chapter";
-            if (localStorage.getItem('undoStates') && localStorage.getItem('undoLevel')) {
-               console.log('-- Loading regions from localStorage --');
-               undoStates = JSON.parse(localStorage.getItem('undoStates'));
-               undoLevel = JSON.parse(localStorage.getItem('undoLevel'));
-               primarySet.tempSpeakerObjects = undoStates[undoLevel].state;
-               primarySet.uniqueSpeakers = [];
-               for (const item of primarySet.tempSpeakerObjects) {
-                  if (!primarySet.uniqueSpeakers.includes(item.speaker)) primarySet.uniqueSpeakers.push(item.speaker);
-               }
-               populateChapters(primarySet);
-               if (undoStates[undoLevel].secState && undoStates[undoLevel].secState.length > 0) {
-                  secondarySet.tempSpeakerObjects = undoStates[undoLevel].secState;
-                  secondarySet.uniqueSpeakers = [];
-                  for (const item of secondarySet.tempSpeakerObjects) {
-                     if (!secondarySet.uniqueSpeakers.includes(item.speaker)) secondarySet.uniqueSpeakers.push(item.speaker);
-                  }
-                  secondaryLoaded = true;
-               }
-               updateRegionEditPanel(); 
-            } else {
-               loadCSVFile(inputFile, ["speaker", "start", "end"], primarySet);
-               dualModeChanged(true, "true");
-               setTimeout(()=>{
-                  dualModeChanged(true, "false");
-               }, 150)
-            }
-         } else if (inputFile.endsWith("json")) { // transcription if json
-            itemType = "word";
-            loadJSONFile(inputFile);
-         } else {                      
-            console.log("Filetype of " + inputFile + " not supported.")
-         }
-         
-         chapters.style.cursor = "default"; // remove load cursor
-         wave.className = "audio-scroll";
-         $.ajax({
-            type: "GET",
-            url: gs.variables.metadataServerURL,
-            data: { a: 'get-fldv-info', site: gs.xsltParams.site_name, c: gs.cgiParams.c, d: gs.cgiParams.d },
-            dataType: "json",
-         }).then(data => {
-            for (const version of ["current", ...data]) {
-               canvasImages[version] = undefined;
-               let menuItem = document.createElement("div");
-               menuItem.classList.add("version-select-menu-item");
-               menuItem.id = version;
-               let text = version.includes("nminus") ? version.replace("nminus-", "Previous(") + ")" : version;
-               menuItem.innerText = text.charAt(0).toUpperCase() + text.slice(1);
-               menuItem.addEventListener('click', versionClicked);
-               let dataObj = { a: 'get-archives-metadata', site: gs.xsltParams.site_name, c: gs.cgiParams.c, d: gs.cgiParams.d, metaname: "commitmessage" };
-               if (version != "current") Object.assign(dataObj, {dv: version});
-               $.ajax({ // get commitmessage metadata to show as hover tooltip
-                  type: "GET",
-                  url: gs.variables.metadataServerURL,
-                  data: dataObj,
-                  dataType: "text",
-               }).then(comment => {
-                  menuItem.title = "Commit message: " + comment;
-                  versionSelectMenu.append(menuItem);
-                  [...versionSelectMenu.children].sort((a,b) => a.innerText>b.innerText?1:-1).forEach(n=>versionSelectMenu.appendChild(n)); // sort alphabetically
-               }, (error) => { console.log("get-archives-metadata error:"); console.log(error); });
-            }
-         }, (error) => { console.log("get-fldv-info error:"); console.log(error); });
-         initialLoad = false;
-      }
-      // fixes blank waveform/regions when loading Current -> Prev.1 -> Prev.2
-      zoomSlider.value = 25;
-      zoomSlider.dispatchEvent(new Event("input"));
-      wavesurfer.zoom(50 / 4);
-      hideAudioLoader();
-   });
-
-   function getAudioURLFromVersion(version) {
-      let base_url = gs.variables.metadataServerURL + "?a=get-archives-assocfile&site=" + gs.xsltParams.site_name + "&c=" + gs.cgiParams.c + "&d=" + gs.cgiParams.d;
-      if (version != "current") base_url += "&dv=" + version // get fldv if not current version
-      return base_url  + "&assocname=" + gs.documentMetadata.Audio;
-   }
-
-   function getCSVURLFromVersion(version) {
-      let base_url = gs.variables.metadataServerURL + "?a=get-archives-assocfile&site=" + gs.xsltParams.site_name + "&c=" + gs.cgiParams.c + "&d=" + gs.cgiParams.d;
-      if (version != "current") base_url += "&dv=" + version; // get fldv if not current version
-      return base_url  + "&assocname=" + "structured-audio.csv";
-   }
-
-   function versionClicked(e) {
-      let unsavedChanges = false;
-      if (undoStates.length > 0) { // only if changes have been made in track being changed FROM
-         let clickedVersionPos = e.target.parentElement.classList.contains('versionTop') ? 0 : 1;
-         for (const state of undoStates) {
-            if (state.changedTrack == selectedVersions[clickedVersionPos]) {
-               unsavedChanges = true;
-               break;
-            }
-         }
-      } 
-      if (unsavedChanges) {
-         const areYouSure = "There are unsaved changes.\nAre you sure you want to lose changes made in this version?";
-         if (window.confirm(areYouSure)) {
-            console.log('OK');
-            discardRegionChanges(true);
-            changeVersion(e);
-         } else {
-            console.log('CANCEL');
-            return;
-         }
-      } else changeVersion(e);
-   }
-
-   function changeVersion(e) {  
-      removeCurrentRegion();
-      const audio_url = getAudioURLFromVersion(e.target.id);
-      const csv_url = getCSVURLFromVersion(e.target.id);
-      versionSelectMenu.classList.remove('visible');
-      const setToUpdate = e.target.parentElement.classList.contains('versionTop') ? primarySet : secondarySet;
-      if (e.target.parentElement.classList.contains('versionTop')) {
-         if (!currSpeakerSet.isSecondary) {
-            if (dualMode) $(".region-top").remove();
-            else $(".wavesurfer-region").remove();
-            showAudioLoader();
-            // if (canvasImages[e.target.id]) { // if waveform image exists in cache
-            //    drawImageOnWaveform(canvasImages[e.target.id]);
-            // }
-            wavesurfer.load(audio_url); // load audio
-         } else {
-            $(".region-top").remove();
-         }
-         document.getElementById('track-set-label-top').children[0].innerText = e.target.id.includes("nminus") ? e.target.id.replace("nminus-", "Previous(") + ")" : "Current"; // update top label text
-         selectedVersions[0] = e.target.id; // update the selected versions
-      } else {
-         if (currSpeakerSet.isSecondary) {
-            if (dualMode) $(".region-bottom").remove();
-            else $(".wavesurfer-region").remove();
-            showAudioLoader();
-            // if (canvasImages[e.target.id]) { // if waveform image exists in cache
-            //    drawImageOnWaveform(canvasImages[e.target.id]);
-            // }
-            wavesurfer.load(audio_url);
-         } else {
-            $(".region-bottom").remove();
-         }
-         document.getElementById('track-set-label-bottom').children[0].innerText = e.target.id.includes("nminus") ? e.target.id.replace("nminus-", "Previous(") + ")" : "Current"; // update bottom label text
-         selectedVersions[1] = e.target.id;
-      }
-      loadCSVFile(csv_url, [], setToUpdate, true);
-   }
-   
-   function downloadURI(loc, name) {
-      let link = document.createElement("a");
-      link.download = name;
-      link.href = loc;
-      link.click();
-   }
 
    // toolbar elements & event handlers
    const audioContainer = document.getElementById("audioContainer");
@@ -803,9 +501,366 @@ function loadAudio(audio, sectionData) {
    savePopupCommit.addEventListener("click", commitChanges);
    savePopupBG.addEventListener("click", toggleSavePopup);
    versionSelectLabels.forEach(arrow => arrow.addEventListener('click', toggleVersionDropdown));
+
+   volumeSlider.addEventListener("input", function() {
+      wavesurfer.setVolume(this.value);
+      if (this.value == 0) {
+         muteButton.src = interface_bootstrap_images + "mute.svg"; 
+         muteButton.style.opacity = 0.6;
+      } else {
+         muteButton.src = interface_bootstrap_images + "unmute.svg"; 
+         muteButton.style.opacity = 1;
+      }
+   });
+
+   zoomSlider.addEventListener('input', function() { // slider changes waveform zoom
+      wavesurfer.zoom(Number(this.value) / 4); 
+      if (currentRegion.speaker && getCurrentRegionIndex() != -1) { 
+         setHoverSpeaker(currSpeakerSet.tempSpeakerObjects[getCurrentRegionIndex()].region.element.style.left, currentRegion.speaker);
+         drawCurrentRegionBounds();
+      }
+      let handles = document.getElementsByClassName("wavesurfer-handle");
+      if (this.value < 20) {
+         for (const handle of handles) handle.style.setProperty("width", "1px", "important");
+      } else {
+         for (const handle of handles) handle.style.setProperty("width", "3px", "important");
+      }
+   });
    showAudioLoader();
    
    if (gs.variables.allowEditing === '0') { editButton.style.display = "none" }
+
+   wavesurfer.load(audio);
+
+   // wavesurfer events
+
+   wavesurfer.on('region-click', handleRegionClick);
+   wavesurfer.on('region-mouseenter', function(region) { // region hover effects
+      if (!mouseDown) {
+         handleRegionColours(region, true); 
+         setHoverSpeaker(region.element.style.left, region.attributes.label.innerText);
+         if (!isInCurrentRegions(region)) {
+            removeRegionBounds();
+            drawRegionBounds(region, wave.scrollLeft, "black");
+         }
+         if (isCurrentRegion(region) && editMode) drawRegionBounds(region, wave.scrollLeft, "FireBrick");
+      }
+   });
+   wavesurfer.on('region-mouseleave', function(region) { 
+      hoverSpeaker.innerHTML = "";
+      if (!mouseDown) {
+         if (!(wavesurfer.getCurrentTime() <= region.end && wavesurfer.getCurrentTime() >= region.start)) handleRegionColours(region, false); 
+         if (!editMode) hoverSpeaker.innerHTML = "";
+         removeRegionBounds();
+         if (currentRegion && currentRegion.speaker && getCurrentRegionIndex() != -1) { 
+            setHoverSpeaker(currSpeakerSet.tempSpeakerObjects[getCurrentRegionIndex()].region.element.style.left, currentRegion.speaker);
+            drawCurrentRegionBounds();
+         } 
+      }
+   });
+   wavesurfer.on('region-in', function(region) { // play caret enters region
+      if (!mouseDown) {
+         handleRegionColours(region, true); 
+         if (itemType == "chapter" && Array.from(chapters.children)[getIndexOfRegion(region)]) {
+            Array.from(chapters.children)[getIndexOfRegion(region)].scrollIntoView({  
+               behavior: "smooth",
+               block: "nearest"
+            });
+         }
+      }
+   });
+   wavesurfer.on('region-out', function(region) { handleRegionColours(region, false) });
+   wavesurfer.on('region-update-end', handleRegionEdit); // end of click-drag event
+   wavesurfer.on('region-updated', handleRegionSnap);
+   wavesurfer.on('error', error => console.log(error));
+
+   wavesurfer.on("play", () => { playPauseButton.src = interface_bootstrap_images + "pause.svg"; });
+   wavesurfer.on("pause", () => { playPauseButton.src = interface_bootstrap_images + "play.svg"; });
+   wavesurfer.on("mute", function(mute) { 
+      if (mute) {
+         muteButton.src = interface_bootstrap_images + "mute.svg"; 
+         muteButton.style.opacity = 0.6;
+         volumeSlider.value = 0;
+      }
+      else {
+         muteButton.src = interface_bootstrap_images + "unmute.svg"; 
+         muteButton.style.opacity = 1;
+         volumeSlider.value = 1;
+      } 
+   });
+
+   wavesurfer.on('ready', function() { // retrieve regions once waveforms have loaded
+      window.onbeforeunload = (e) => {
+         if (undoStates.length > 1) { 
+            console.log('undoStates.length: ' + undoStates.length);
+            e.returnValue = "Data will be lost if you leave the page, are you sure?";
+            return "Data will be lost if you leave the page, are you sure?";
+         }
+      };
+      if (document.getElementById('new-canvas')) document.getElementById('new-canvas').remove();
+      setTimeout(() => { // if not delayed exportImage does not retrieve waveform (despite being in waveform-ready?)
+         const currVersion = selectedVersions[(!dualMode || primaryCaret.src.includes("fill")) ? 0 : 1];
+         for (let key in canvasImages) {
+            if (currVersion == key && canvasImages[key] == undefined) { canvasImages[key] = wavesurfer.exportImage() } // add waveform image to cache if one isn't already assigned to the version
+         }
+      }, 1000);
+
+      if (initialLoad) {
+         if (inputFile.endsWith("csv")) { // diarization if csv
+            itemType = "chapter";
+            if (localStorage.getItem('undoStates') && localStorage.getItem('undoLevel')) {
+               console.log('-- Loading regions from localStorage --');
+               undoStates = JSON.parse(localStorage.getItem('undoStates'));
+               undoLevel = JSON.parse(localStorage.getItem('undoLevel'));
+               primarySet.tempSpeakerObjects = undoStates[undoLevel].state;
+               primarySet.uniqueSpeakers = [];
+               for (const item of primarySet.tempSpeakerObjects) {
+                  if (!primarySet.uniqueSpeakers.includes(item.speaker)) primarySet.uniqueSpeakers.push(item.speaker);
+               }
+               populateChaptersAndRegions(primarySet);
+               if (undoStates[undoLevel].secState && undoStates[undoLevel].secState.length > 0) {
+                  secondarySet.tempSpeakerObjects = undoStates[undoLevel].secState;
+                  secondarySet.uniqueSpeakers = [];
+                  for (const item of secondarySet.tempSpeakerObjects) {
+                     if (!secondarySet.uniqueSpeakers.includes(item.speaker)) secondarySet.uniqueSpeakers.push(item.speaker);
+                  }
+                  secondaryLoaded = true;
+               }
+               updateRegionEditPanel(); 
+            } else {
+               loadCSVFile(inputFile, primarySet);
+               dualModeChanged(true, "true");
+               setTimeout(()=>{
+                  dualModeChanged(true, "false");
+               }, 150)
+            }
+         } else if (inputFile.endsWith("json")) { // transcription if json
+            itemType = "word";
+            loadJSONFile(inputFile);
+         } else {                      
+            console.log("Filetype of " + inputFile + " not supported.")
+         }
+         
+         chapters.style.cursor = "default"; // remove load cursor
+         wave.className = "audio-scroll";
+         $.ajax({
+            type: "GET",
+            url: gs.variables.metadataServerURL,
+            data: { a: 'get-fldv-info', site: gs.xsltParams.site_name, c: gs.cgiParams.c, d: gs.cgiParams.d },
+            dataType: "json",
+         }).then(data => {
+            for (const version of ["current", ...data]) {
+               canvasImages[version] = undefined;
+               let menuItem = document.createElement("div");
+               menuItem.classList.add("version-select-menu-item");
+               menuItem.id = version;
+               let text = version.includes("nminus") ? version.replace("nminus-", "Previous(") + ")" : version;
+               menuItem.innerText = text.charAt(0).toUpperCase() + text.slice(1);
+               menuItem.addEventListener('click', versionClicked);
+               let dataObj = { a: 'get-archives-metadata', site: gs.xsltParams.site_name, c: gs.cgiParams.c, d: gs.cgiParams.d, metaname: "commitmessage" };
+               if (version != "current") Object.assign(dataObj, {dv: version});
+               $.ajax({ // get commitmessage metadata to show as hover tooltip
+                  type: "GET",
+                  url: gs.variables.metadataServerURL,
+                  data: dataObj,
+                  dataType: "text",
+               }).then(comment => {
+                  menuItem.title = "Commit message: " + comment;
+                  versionSelectMenu.append(menuItem);
+                  [...versionSelectMenu.children].sort((a,b) => a.innerText>b.innerText?1:-1).forEach(n=>versionSelectMenu.appendChild(n)); // sort alphabetically
+               }, (error) => { console.log("get-archives-metadata error:"); console.log(error); });
+            }
+         }, (error) => { console.log("get-fldv-info error:"); console.log(error); });
+         initialLoad = false;
+      }
+      // fixes blank waveform/regions when loading Current -> Prev.1 -> Prev.2
+      zoomSlider.value = 25;
+      zoomSlider.dispatchEvent(new Event("input"));
+      wavesurfer.zoom(50 / 4);
+      hideAudioLoader();
+   });
+
+   /**
+   * Draws string above waveform at the provided offset
+   * @param {number} offset Offset (from left) to desired location
+   * @param {string} name String to be drawn
+   */
+   function setHoverSpeaker(offset, name) {
+      hoverSpeaker.innerHTML = name;  
+      let newOffset = parseInt(offset.slice(0, -2)) - wave.scrollLeft;
+      hoverSpeaker.style.marginLeft = newOffset + "px";
+   }
+
+   function handleRegionClick(region, e) { 
+      contextMenu.classList.remove('visible');
+      e.stopPropagation();
+      if (!editMode) { // play region audio on click
+         wavesurfer.play(region.start); // plays from start of region
+      } else { // select or deselect current region
+         if (!region.element) return;
+         if (region.element.classList.contains("region-top")) {
+            currSpeakerSet = primarySet;
+            swapCarets(true);
+         } else if (region.element.classList.contains("region-bottom")) {
+            currSpeakerSet = secondarySet;
+            swapCarets(false);
+         }
+         prevUndoState = "";
+
+         if (!e.ctrlKey && !e.shiftKey) {
+            currentRegions = [];
+            currentRegion = region;
+            currentRegion.speaker = currentRegion.attributes.label.innerText;
+            wavesurfer.backend.seekTo(currentRegion.start);
+         } else if (e.ctrlKey) { // control was held during click
+            if (currentRegions.length == 0 && isCurrentRegion(region)) {
+               removeCurrentRegion();
+            } else if (getCurrentRegionIndex() != -1 && isInCurrentRegions(region)) {
+               const removeIndex = getIndexInCurrentRegions(region);
+               if (removeIndex != -1) currentRegions.splice(removeIndex, 1);
+               if (currentRegions.length > 0 && isCurrentRegion(region)) { // change current region if removed
+                  currentRegion = currentRegions[0];
+               }
+            } else {
+               if (currentRegions.length < 1) currentRegions.push(currentRegion);
+               if (getIndexInCurrentRegions(region) == -1) currentRegions.push(region); // add if it doesn't already exist
+               currentRegion = region;
+               currentRegion.speaker = currentRegion.attributes.label.innerText;
+               wavesurfer.backend.seekTo(currentRegion.start); 
+            }
+            if (currentRegions.length == 1)  currentRegions = []; // clear selected regions if there is only one
+         } else if (e.shiftKey) { // shift was held during click
+            clearChapterSearch();
+            if (getCurrentRegionIndex() != -1 && getIndexOfRegion(region) != -1) {
+               if (currentRegions && currentRegions.length > 0) {
+                  if (Math.max(...getCurrentRegionsIndexes()) < getIndexOfRegion(region)) { // shifting forwards / down
+                     currentRegions = currSpeakerSet.tempSpeakerObjects.slice(Math.min(...getCurrentRegionsIndexes()), getIndexOfRegion(region)+1);
+                  } else { // shifting backwards / up
+                     currentRegions = currSpeakerSet.tempSpeakerObjects.slice(getIndexOfRegion(region), Math.max(...getCurrentRegionsIndexes())+1);
+                  }
+               } else {
+                  if (getCurrentRegionIndex() < getIndexOfRegion(region)) { // shifting forwards / down
+                     currentRegions = currSpeakerSet.tempSpeakerObjects.slice(getCurrentRegionIndex(), getIndexOfRegion(region)+1);
+                  } else { // shifting backwards / up
+                     currentRegions = currSpeakerSet.tempSpeakerObjects.slice(getIndexOfRegion(region), getCurrentRegionIndex()+1);
+                  }
+               }
+            }
+         }
+         if (changeAllCheckbox.checked) { currentRegions = getRegionsWithSpeaker(currentRegion.speaker) } 
+         reloadRegionsAndChapters();
+      }
+   }
+
+   /**
+   * Returns index of given region within the currently selected regions
+   * @param {object} region Region within currently selected regions to return index for
+   * @returns {int} Index position of region
+   */
+   function getIndexInCurrentRegions(region) {
+      for (const reg of currentRegions) {
+         const regSpeaker = reg.attributes ? reg.attributes.label.innerText : reg.speaker;
+         if (reg.start == region.start && reg.end == region.end && regSpeaker == region.attributes.label.innerText) {
+            return currentRegions.indexOf(reg);
+         }
+      }
+      return -1;
+   }
+
+   /**
+   * Returns index of region within speakerObject array
+   * @param {object} region Region to return index for
+   * @returns {int} Index position of region
+   */
+   function getIndexOfRegion(region) {
+      for (const reg of currSpeakerSet.tempSpeakerObjects) {
+         if (region.attributes && reg.start == region.start && reg.end == region.end && reg.speaker == region.attributes.label.innerText) {
+            return currSpeakerSet.tempSpeakerObjects.indexOf(reg);
+         }
+      }
+      return -1;
+   }
+
+   function getAudioURLFromVersion(version) {
+      let base_url = gs.variables.metadataServerURL + "?a=get-archives-assocfile&site=" + gs.xsltParams.site_name + "&c=" + gs.cgiParams.c + "&d=" + gs.cgiParams.d;
+      if (version != "current") base_url += "&dv=" + version // get fldv if not current version
+      return base_url  + "&assocname=" + gs.documentMetadata.Audio;
+   }
+
+   function getCSVURLFromVersion(version) {
+      let base_url = gs.variables.metadataServerURL + "?a=get-archives-assocfile&site=" + gs.xsltParams.site_name + "&c=" + gs.cgiParams.c + "&d=" + gs.cgiParams.d;
+      if (version != "current") base_url += "&dv=" + version; // get fldv if not current version
+      return base_url  + "&assocname=" + "structured-audio.csv";
+   }
+
+   function versionClicked(e) {
+      let unsavedChanges = false;
+      if (undoStates.length > 0) { // only if changes have been made in track being changed FROM
+         let clickedVersionPos = e.target.parentElement.classList.contains('versionTop') ? 0 : 1;
+         for (const state of undoStates) {
+            if (state.changedTrack == selectedVersions[clickedVersionPos]) {
+               unsavedChanges = true;
+               break;
+            }
+         }
+      } 
+      if (unsavedChanges) {
+         const areYouSure = "There are unsaved changes.\nAre you sure you want to lose changes made in this version?";
+         if (window.confirm(areYouSure)) {
+            console.log('OK');
+            discardRegionChanges(true);
+            changeVersion(e);
+         } else {
+            console.log('CANCEL');
+            return;
+         }
+      } else changeVersion(e);
+   }
+
+   function changeVersion(e) {  
+      removeCurrentRegion();
+      const audio_url = getAudioURLFromVersion(e.target.id);
+      const csv_url = getCSVURLFromVersion(e.target.id);
+      versionSelectMenu.classList.remove('visible');
+      const setToUpdate = e.target.parentElement.classList.contains('versionTop') ? primarySet : secondarySet;
+      if (e.target.parentElement.classList.contains('versionTop')) {
+         if (!currSpeakerSet.isSecondary) {
+            if (dualMode) $(".region-top").remove();
+            else $(".wavesurfer-region").remove();
+            showAudioLoader();
+            // if (canvasImages[e.target.id]) { // if waveform image exists in cache
+            //    drawImageOnWaveform(canvasImages[e.target.id]);
+            // }
+            wavesurfer.load(audio_url); // load audio
+         } else {
+            $(".region-top").remove();
+         }
+         document.getElementById('track-set-label-top').children[0].innerText = e.target.id.includes("nminus") ? e.target.id.replace("nminus-", "Previous(") + ")" : "Current"; // update top label text
+         selectedVersions[0] = e.target.id; // update the selected versions
+      } else {
+         if (currSpeakerSet.isSecondary) {
+            if (dualMode) $(".region-bottom").remove();
+            else $(".wavesurfer-region").remove();
+            showAudioLoader();
+            // if (canvasImages[e.target.id]) { // if waveform image exists in cache
+            //    drawImageOnWaveform(canvasImages[e.target.id]);
+            // }
+            wavesurfer.load(audio_url);
+         } else {
+            $(".region-bottom").remove();
+         }
+         document.getElementById('track-set-label-bottom').children[0].innerText = e.target.id.includes("nminus") ? e.target.id.replace("nminus-", "Previous(") + ")" : "Current"; // update bottom label text
+         selectedVersions[1] = e.target.id;
+      }
+      loadCSVFile(csv_url, setToUpdate, true);
+   }
+   
+   function downloadURI(loc, name) {
+      let link = document.createElement("a");
+      link.download = name;
+      link.href = loc;
+      link.click();
+   }
 
    function documentClicked(e) { // document on click
       contextMenu.classList.remove('visible'); 
@@ -842,7 +897,13 @@ function loadAudio(audio, sectionData) {
       return lockedImg;
    }
 
-   function attachPadlockListener(padlock, region, isChapter) { // attaches a click listener to given padlock element
+   /**
+   * Attaches a click listener to given padlock element
+   * @param padlock Element to attach listener to
+   * @param region Associated region 
+   * @param isChapter Whether padlock exists in chapter (true) or wavesurfer region (false)
+   */
+   function attachPadlockListener(padlock, region, isChapter) {
       if (isChapter == true) {
          padlock.addEventListener('click', () => { // attach to chapter padlock
             let index = getIndexOfRegion(region);
@@ -1077,7 +1138,13 @@ function loadAudio(audio, sectionData) {
       }
    }
 
-   function getSnapValue(newDragPos, speakerSet) { // gets snap value if near adjacent region edge
+   /** 
+   * Returns snap value if near [snapRadius] adjacent region edge
+   * @param newDragPos Drag position in seconds to check for
+   * @param speakerSet Adjacent region set
+   * @returns {number} If found, returns snapped position, otherwise returns input position
+   */
+   function getSnapValue(newDragPos, speakerSet) { 
       const snapRadius = 1;      
       for (const region of speakerSet) { // scan opposite region for potential snapping points
          if (newDragPos > parseFloat(region.start) - snapRadius && newDragPos < parseFloat(region.start) + snapRadius) { 
@@ -1279,7 +1346,12 @@ function loadAudio(audio, sectionData) {
       if (e.code == "Space" && e.target.tagName.toLowerCase() != "input") e.preventDefault();
    }
 
-   function dualModeChanged(skipUndoState, overrideValue) { // on dualmode checkbox value change
+   /**
+   * Shows / hides secondary speaker set
+   * @param skipUndoState Utility param - skips the addition of an undo state
+   * @param overrideValue Utility param - overrides the checkbox state
+   */
+   function dualModeChanged(skipUndoState, overrideValue) {
       if (overrideValue) dualModeCheckbox.checked = overrideValue == "true" ? true : false;
       else dualModeCheckbox.checked = !dualModeCheckbox.checked; // toggle dual mode checkbox
       dualMode = dualModeCheckbox.checked; 
@@ -1291,7 +1363,7 @@ function loadAudio(audio, sectionData) {
          if (!secondaryLoaded) {
             const secondaryCSVURL = "http://localhost:8383/greenstone3/cgi-bin/metadata-server.pl?a=get-archives-assocfile&site=" + gs.xsltParams.site_name + "&c=" + gs.collectionMetadata.indexStem + 
                                     "&d=" + gs.documentMetadata.Identifier + "&assocname=structured-audio.csv&dv=nminus-1";
-            loadCSVFile(secondaryCSVURL, ["speaker", "start", "end"], secondarySet);
+            loadCSVFile(secondaryCSVURL, secondarySet);
             secondaryLoaded = true; // ensure secondarySet doesn't get re-read > once
          }
          document.getElementById("caret-container").style.display = "flex";
@@ -1313,6 +1385,10 @@ function loadAudio(audio, sectionData) {
       if (!skipUndoState) addUndoState(primarySet, secondarySet, currSpeakerSet.isSecondary, dualMode, "dualModeChange", getCurrentRegionIndex());
    } 
 
+   /**
+   * Changes selected speaker set
+   * @param {string} id ID of clicked caret image
+   */
    function caretClicked(id) {
       clearChapterSearch();
       if (id === "primary-caret") {
@@ -1324,6 +1400,10 @@ function loadAudio(audio, sectionData) {
       }
    }
 
+   /**
+   * Loads destination waveform and audio if required, updates caret images
+   * @param {boolean} toPrimary whether destination set is primary (true) or secondary (false)
+   */
    function swapCarets(toPrimary) {
       const currCaretIsPrimary = primaryCaret.src.includes("fill") ? true : false; // initial value before swap
       if ((toPrimary && !currCaretIsPrimary) || (!toPrimary && currCaretIsPrimary)) { 
@@ -1358,7 +1438,10 @@ function loadAudio(audio, sectionData) {
       }
    }
 
-   function showAudioLoader() { // shows spinner, loading audio text and hides regions
+   /**
+   * Shows spinning loader over waveform, hides regions
+   */
+   function showAudioLoader() {
       $('.wavesurfer-region').fadeOut(100);
       $(".chapter").fadeOut(100);
       $(".track-set-label").fadeOut(100);
@@ -1368,6 +1451,9 @@ function loadAudio(audio, sectionData) {
       playPauseButton.classList.add("disabled");
    }
 
+   /**
+   * Hides spinning loader, brings back regions
+   */
    function hideAudioLoader() {
       $('.wavesurfer-region').fadeIn(100);
       $(".chapter").fadeIn(100);
@@ -1380,6 +1466,10 @@ function loadAudio(audio, sectionData) {
       playPauseButton.classList.remove("disabled");
    }
 
+   /**
+   * Draws given image URL on waveform 
+   * @param image URL of image to be drawn
+   */
    function drawImageOnWaveform(image) {
       // console.log('draw waveform image from cache')
       if (document.getElementById('new-canvas')) document.getElementById('new-canvas').remove();
@@ -1391,6 +1481,9 @@ function loadAudio(audio, sectionData) {
       waveformContainer.appendChild(newCanvas); 
    }
 
+   /**
+   * Regenerates chapter list to update any changes made in speakerSet
+   */
    function reloadChapterList() { 
       chapters.innerHTML = "";
       for (let i = 0; i < currSpeakerSet.tempSpeakerObjects.length; i++) {
@@ -1422,47 +1515,10 @@ function loadAudio(audio, sectionData) {
       }
    }
 
-   wavesurfer.on("play", () => { playPauseButton.src = interface_bootstrap_images + "pause.svg"; });
-   wavesurfer.on("pause", () => { playPauseButton.src = interface_bootstrap_images + "play.svg"; });
-   wavesurfer.on("mute", function(mute) { 
-      if (mute) {
-         muteButton.src = interface_bootstrap_images + "mute.svg"; 
-         muteButton.style.opacity = 0.6;
-         volumeSlider.value = 0;
-      }
-      else {
-         muteButton.src = interface_bootstrap_images + "unmute.svg"; 
-         muteButton.style.opacity = 1;
-         volumeSlider.value = 1;
-      } 
-   });
-
-   volumeSlider.addEventListener("input", function() {
-      wavesurfer.setVolume(this.value);
-      if (this.value == 0) {
-         muteButton.src = interface_bootstrap_images + "mute.svg"; 
-         muteButton.style.opacity = 0.6;
-      } else {
-         muteButton.src = interface_bootstrap_images + "unmute.svg"; 
-         muteButton.style.opacity = 1;
-      }
-   });
-
-   zoomSlider.addEventListener('input', function() { // slider changes waveform zoom
-      wavesurfer.zoom(Number(this.value) / 4); 
-      if (currentRegion.speaker && getCurrentRegionIndex() != -1) { 
-         setHoverSpeaker(currSpeakerSet.tempSpeakerObjects[getCurrentRegionIndex()].region.element.style.left, currentRegion.speaker);
-         drawCurrentRegionBounds();
-      }
-      let handles = document.getElementsByClassName("wavesurfer-handle");
-      if (this.value < 20) {
-         for (const handle of handles) handle.style.setProperty("width", "1px", "important");
-      } else {
-         for (const handle of handles) handle.style.setProperty("width", "3px", "important");
-      }
-   });
-
-   let toggleChapters = function() { // show & hide chapter section
+   /**
+   * Shows / hides chapter section
+   */
+   let toggleChapters = function() {
       if (chapters.style.height == "0px") {
          chapters.style.height = "90%";
          chaptersContainer.style.height = "30vh";
@@ -1474,6 +1530,13 @@ function loadAudio(audio, sectionData) {
       }
    }
 
+   /**
+   * Object representing elements of a diarization output
+   * @param {boolean} isSecondary Whether or not the set is secondary/bottom (true) or primary/top (false)
+   * @param {Array} uniqueSpeakers Array of all unique speaker names within the diarization data, used for colouring regions
+   * @param {Array} speakerObjects Array of objects containing speaker start/stop times and names
+   * @param {Array} tempSpeakerObjects Temporary version of speakerObjects, which can be reverted back to if required 
+   */
    function SpeakerSet(isSecondary, uniqueSpeakers, speakerObjects, tempSpeakerObjects) {
       this.isSecondary = isSecondary;
       this.uniqueSpeakers = uniqueSpeakers;
@@ -1485,7 +1548,13 @@ function loadAudio(audio, sectionData) {
    let secondarySet = new SpeakerSet(true, [], [], [], []);
    let currSpeakerSet = primarySet;
 
-   function loadCSVFile(filename, manualHeader, speakerSet, forcePopulate) { // based on: https://stackoverflow.com/questions/7431268/how-to-read-data-from-csv-file-using-javascript
+   /**
+   * Reads diarization CSV file and populates speakerSet
+   * @param {string} filename Source destination of input CSV file
+   * @param {object} speakerSet speaker set to be populated
+   * @param {boolean} forcePopulate Forces redraw of regions and chapters
+   */
+   function loadCSVFile(filename, speakerSet, forcePopulate) { // based on: https://stackoverflow.com/questions/7431268/how-to-read-data-from-csv-file-using-javascript
       $.ajax({
          type: "GET",
          url: filename,
@@ -1515,15 +1584,16 @@ function loadAudio(audio, sectionData) {
             }
          }
          speakerSet.tempSpeakerObjects = cloneSpeakerObjectArray(speakerSet.speakerObjects);
-         if (!speakerSet.isSecondary || forcePopulate) populateChapters(speakerSet); // prevents secondary set being drawn on first load
+         if (!speakerSet.isSecondary || forcePopulate) populateChaptersAndRegions(speakerSet); // prevents secondary set being drawn on first load
          resetUndoStates(); // undo stack init
-         // TODO: THIS BREAKS CHROME!
-         // zoomInButton.click();
-         // zoomOutButton.click();
       }, (error) => { console.log("loadCSVFile error:"); console.log(error); });
    }
 
-   function populateChapters(data) { // populates chapter section and adds regions to waveform
+   /**
+   * Populates chapter list div and regions on waveform with given speaker set
+   * @param {object} data Speaker set object with diarization data
+   */
+   function populateChaptersAndRegions(data) {
       // colorbrewer is a web tool for guidance in choosing map colour schemes based on a letiety of settings.
       // this colour scheme is designed for qualitative data
       if (regionColourSet.length < 1) {
@@ -1685,7 +1755,11 @@ function loadAudio(audio, sectionData) {
          drawCurrentRegionBounds();
       } 
    }
-
+   /**
+   * Handles region and chapter colours
+   * @param {object} region Region element to adjust
+   * @param {boolean} highlight Whether or not region should be white-highlighted
+   */
    function handleRegionColours(region, highlight) { // handles region, chapter & word colours
       if (!dualMode || (region.element.classList.contains("region-top") && primaryCaret.src.includes("fill")) || region.element.classList.contains("region-bottom") && secondaryCaret.src.includes("fill")) {
          let colour;
@@ -1797,6 +1871,10 @@ function loadAudio(audio, sectionData) {
       reloadRegionsAndChapters(); // editMode sets drag/resize property when regions are redrawn
    }
 
+   /**
+   * Handles the edit of region start time, stop time, or speaker name, updating the speaker set
+   * @param {object} region Region that has been updated
+   */
    function handleRegionEdit(region, e) { 
       if (region.element.classList.contains("region-bottom")) { currSpeakerSet = secondarySet; swapCarets(false) }
       else { currSpeakerSet = primarySet; swapCarets(true) }
@@ -1820,6 +1898,10 @@ function loadAudio(audio, sectionData) {
       editPanel.click(); // fixes buttons needing to be clicked twice (unknown cause!)
    }
 
+   /**
+   * Shows popup to ensure user is aware they are editing a locked region
+   * @param {object} region Region that is being edited
+   */
    function editLockedRegion(region) { // ensures user is aware region being edited is locked
       if (region.locked) {
          let confirm = false;
@@ -1827,13 +1909,19 @@ function loadAudio(audio, sectionData) {
          if (!confirm) undo(); // undo change if no
          else { // remove lock if yes
             region.locked = false; 
-            if (region.region.element.firstChild) region.region.element.firstChild.remove();
-            if (chapters.childNodes[getCurrentRegionIndex()].childNodes[1].tagName === "IMG") chapters.childNodes[getCurrentRegionIndex()].childNodes[1].classList.add('hide'); 
+            if (region.region && region.region.element.firstChild) region.region.element.firstChild.remove(); // remove region padlock
+            if (chapters.childNodes[getCurrentRegionIndex()].childNodes[1].tagName === "IMG") chapters.childNodes[getCurrentRegionIndex()].childNodes[1].classList.add('hide'); // remove chapter padlock
          }
       }
    }
 
-   function handleSameSpeakerOverlap(regionIdx, speakerSet, skipCurrentRegionUpdate) { // consumes/merges same-speaker regions with overlapping bounds
+   /**
+   * Merges same-speaker regions with overlapping bounds
+   * @param {int} regionIdx Index of dragged/edited region
+   * @param {object} speakerSet Speaker set dragged region exists in 
+   * @param {boolean} skipCurrentRegionUpdate Whether or not to skip the updating of current region
+   */
+   function handleSameSpeakerOverlap(regionIdx, speakerSet, skipCurrentRegionUpdate) {
       let draggedRegion = speakerSet.tempSpeakerObjects[regionIdx]; // regionIdx may point to a different region within the for-loop after adjustments, so defined here
       let draggedRegionSpeaker = draggedRegion.speaker;
       for (let i = 0; i < speakerSet.tempSpeakerObjects.length; i++) {
@@ -1862,7 +1950,10 @@ function loadAudio(audio, sectionData) {
       }
    }
 
-   function updateRegionEditPanel() { // updates edit panel content/inputs
+   /**
+   * Updates the edit panel elements based on various editing states
+   */
+   function updateRegionEditPanel() { 
       if (currentRegion && currentRegion.speaker == "") { 
          removeButton.classList.add("disabled");
          speakerInput.classList.add("disabled");
@@ -1901,6 +1992,9 @@ function loadAudio(audio, sectionData) {
       else redoButton.classList.remove("disabled");
    }
 
+   /**
+   * Adds a new region to the waveform at the current caret location with the speaker name "NEW_SPEAKER"
+   */
    function createNewRegion() { // adds a new region to the waveform
       clearChapterSearch();
       const speaker = "NEW_SPEAKER"; // default name
@@ -1927,7 +2021,10 @@ function loadAudio(audio, sectionData) {
       console.log("getRegionFromProps failed to find matching region");
    }
 
-   function removeRegion() { // removes currently selected region or regions
+   /**
+   * Removes the currently selected region or regions
+   */
+   function removeRegion() { 
       if (!removeButton.classList.contains("disabled")) {
          if (getCurrentRegionIndex() != -1) { // if currentRegion has been set 
             let currentRegionIndex = getCurrentRegionIndex();
@@ -2019,7 +2116,10 @@ function loadAudio(audio, sectionData) {
       });
    }
 
-   function speakerChange() { // speaker input name onInput handler
+   /**
+   * Changes the associated speaker name of a region, updating the speaker set
+   */
+   function speakerChange() {
       const newSpeaker = speakerInput.value;
       clearChapterSearch();
       if (newSpeaker && newSpeaker.trim() != "") {
@@ -2056,6 +2156,10 @@ function loadAudio(audio, sectionData) {
       } else speakerInput.style.outline = "2px transparent";
    }
 
+   /**
+   * Selects all (or reverts select-all) regions matching any of the currently selected speaker names
+   * @param {boolean} skipUndoState Whether or not to skip the addition of an undo state
+   */
    function selectAllCheckboxChanged(skipUndoState) { // "Change all" toggled
       if (changeAllCheckbox.checked) {
          if (!isZooming) {
@@ -2094,7 +2198,11 @@ function loadAudio(audio, sectionData) {
       for (idx in endTimeInput.childNodes) { endTimeInput.childNodes[idx].value = 0; endTimeInput.childNodes[idx].disabled = true; }
    }
 
-   function zoomTo(dest) { // (smoothly?) zooms wavesurfer waveform to destination
+   /**
+   * Zooms wavesurfer waveform to destination zoom level, used in select all function
+   * @param {number} dest Destination zoom level
+   */
+   function zoomTo(dest) { 
       isZooming = true;
       changeAllCheckbox.disabled = true;
       let isOut = false;
@@ -2138,19 +2246,24 @@ function loadAudio(audio, sectionData) {
       }
    }
 
-   function saveRegionChanges() { // saves tempSpeakerObjects to speakerObjects ddddd
-      if (!saveButton.classList.contains("disabled")) {
-         toggleSavePopup();
-         // old save functionality
-         currSpeakerSet.speakerObjects = cloneSpeakerObjectArray(currSpeakerSet.tempSpeakerObjects);
-         editsMade = false;
-         removeCurrentRegion();
-         reloadRegionsAndChapters();
-         console.log("saved changes.");
-      }
+   function saveRegionChanges() { // saves tempSpeakerObjects to speakerObjects
+      // if (!saveButton.classList.contains("disabled")) {
+      //    toggleSavePopup();
+      //    // old save functionality
+      //    currSpeakerSet.speakerObjects = cloneSpeakerObjectArray(currSpeakerSet.tempSpeakerObjects);
+      //    editsMade = false;
+      //    removeCurrentRegion();
+      //    reloadRegionsAndChapters();
+      //    console.log("saved changes.");
+      // }
    }
 
-   function commitChanges() { // commits CSV changes: increments FLDV, sets commitmessage metadata, sets associated file
+   /**
+   * Commits changes made to the currently selected set to Greenstone's version history system. 
+   * Firstly increments FLDV, then saves commit message to document's metadata, then sets document's
+   * associated file to tempSpeakerObjects CSV.
+   */
+   function commitChanges() {
       if (savePopupCommitMsg.value && savePopupCommitMsg.value.length > 0) {
          console.log('committing with message: ' + savePopupCommitMsg.value);
          // inc fldv_history
@@ -2215,14 +2328,17 @@ function loadAudio(audio, sectionData) {
       }
    }
 
+   /**
+   * Redraws edit panel, chapter list and wavesurfer regions from speaker set
+   */
    function reloadRegionsAndChapters() { // redraws edit panel, chapter list, wavesurfer regions 
       updateRegionEditPanel();
       $(".region-top").remove();
       $(".region-bottom").remove();
       $(".wavesurfer-region").remove();
-      populateChapters(primarySet);
+      populateChaptersAndRegions(primarySet);
       if (dualMode) { 
-         populateChapters(secondarySet);
+         populateChaptersAndRegions(secondarySet);
          currSpeakerSet = primarySet;
       }
       updateCurrSpeakerSet();
@@ -2241,6 +2357,9 @@ function loadAudio(audio, sectionData) {
       }
    }
 
+   /**
+   * Handles the change of a region's start or end time, updating hte speaker set
+   */
    function changeStartEndTime(e) { // start/end time input handler
       let newStart = getTimeInSecondsFromInput(startTimeInput);
       let newEnd = getTimeInSecondsFromInput(endTimeInput);
@@ -2271,13 +2390,23 @@ function loadAudio(audio, sectionData) {
       }
    }
 
-   function getTimeInSecondsFromInput(input) { // returns time in seconds from start or end input
+   /**
+   * Calculates time in seconds of start or end time input group
+   * @param {element} input Element of time input groups: hh:mm:ss
+   * @returns {int} Time in seconds 
+   */
+   function getTimeInSecondsFromInput(input) { 
       let hours = input.children[0].valueAsNumber;
       let mins = input.children[1].valueAsNumber;
       let secs = input.children[2].valueAsNumber;
       return (hours * 3600) + (mins * 60) + secs;
    }
 
+   /**
+   * Sets the start or end time element group inputs 
+   * @param {element} input Element of time input group to be updated
+   * @param {int} seconds Duration in seconds to be converted into hh:mm:ss
+   */
    function setInputInSeconds(input, seconds) { // sets start or end input time when given seconds
       let date = new Date(null);
       date.setMilliseconds(seconds * 1000);
@@ -2291,6 +2420,16 @@ function loadAudio(audio, sectionData) {
       });      
    }
 
+   /**
+    * Adds a new undo state to the global undo state list
+    * @param {object} state Primary set at current state
+    * @param {object} secState Secondary set at current state
+    * @param {boolean} isSec Whether or not current change was made to primary (false) or secondary (true) set
+    * @param {boolean} dualMode Whether or not audio editor was in dual mode when undo state was added
+    * @param {string} type Type of change e.g "remove", "speaker-change"
+    * @param {int} currRegIdx Index of currently selected region (for restoration)
+    * @param {Array} currRegIdxs Index of currently selected regions, if applicable (for restoration)
+    */
    function addUndoState(state, secState, isSec, dualMode, type, currRegIdx, currRegIdxs) { // adds a new state to the undoStates stack
       let newState = cloneSpeakerObjectArray(state.tempSpeakerObjects); // clone method removes references
       let newSecState = cloneSpeakerObjectArray(secState.tempSpeakerObjects); // clone method removes references
@@ -2312,7 +2451,10 @@ function loadAudio(audio, sectionData) {
       localStorage.setItem('undoLevel', undoLevel);
    }
 
-   function undo() { // undo action: go back one state in the undoStates stack
+   /**
+    * Returns to the previous state in the undo state list
+    */
+   function undo() {
       if (!undoButton.classList.contains("disabled") && editMode) { // ensure there exist states to undo to
          clearChapterSearch();
          if (undoLevel - 1 < 0) console.log("ran out of undos");
@@ -2361,7 +2503,10 @@ function loadAudio(audio, sectionData) {
       }
    }
 
-   function redo() { // redo action: go forward one state in the undoStates stack
+   /**
+    * Moves forward one state in the undo state list
+    */
+   function redo() {
       if (!redoButton.classList.contains("disabled") && editMode) { // ensure there exist states to redo to
          clearChapterSearch();
          if (undoLevel + 1 >= undoStates.length) console.log("ran out of redos");
@@ -2431,6 +2576,12 @@ function loadAudio(audio, sectionData) {
       }
    }
 
+   /**
+    * Draws bounding 'n' above hovered or selected region 
+    * @param {object} region Region to have bound drawn for
+    * @param {number} scrollPos Scroll position of div, used to offset draw position
+    * @param {string} colour Colour to draw bound (black and FireBrick are used)
+    */
    function drawRegionBounds(region, scrollPos, colour) { // draws on canvas to show bounds of hovered/selected region
       const hoverSpeakerCanvas = document.createElement("canvas");
       hoverSpeakerCanvas.id = "hover-speaker-canvas";
@@ -2487,7 +2638,10 @@ function loadAudio(audio, sectionData) {
       }
    }
 
-   function toggleFullscreen() { // toggles fullscreen mode of audio player/editor
+   /**
+   * Enables / disables the fullscreen view of audio player / editor
+   */
+   function toggleFullscreen() { 
       if ((document.fullscreenElement && document.fullscreenElement !== null) ||
         (document.webkitFullscreenElement && document.webkitFullscreenElement !== null) ||
         (document.mozFullScreenElement && document.mozFullScreenElement !== null) ||
@@ -2509,6 +2663,11 @@ function loadAudio(audio, sectionData) {
    }
 }
 
+/**
+ * Formats seconds to hh:mm:ss
+ * @param {number} duration 
+ * @returns {string} Time in hh:mm:ss format
+ */
 function formatAudioDuration(duration) {
    // console.log('duration: ' + duration);
    let [hrs, mins, secs, ms] = duration.replace(".", ":").split(":");

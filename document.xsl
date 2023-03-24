@@ -190,10 +190,8 @@
 							<div id="waveform-blocker"><div id="waveform-spinner"><xsl:text> </xsl:text></div></div>
 							<span id="waveform-loader">Loading audio</span>
 							<div class="track-set-label" id="track-set-label-top">
-								<!-- <div class="version-select-menu-class"> -->
-									<span>Current</span>
-									<img class="track-arrow" src="interfaces/{$interface_name}/images/bootstrap/caret-right.svg"/>
-								<!-- </div> -->
+								<span>Current</span>
+								<img class="track-arrow" src="interfaces/{$interface_name}/images/bootstrap/caret-right.svg"/>
 							</div>
 							<div class="track-set-label" id="track-set-label-bottom">
 								<span>nminus-1</span>
