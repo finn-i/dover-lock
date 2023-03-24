@@ -613,6 +613,7 @@ function loadAudio(audio, sectionData) {
                undoStates = JSON.parse(localStorage.getItem('undoStates'));
                undoLevel = JSON.parse(localStorage.getItem('undoLevel'));
                primarySet.tempSpeakerObjects = undoStates[undoLevel].state;
+               primarySet.speakerObjects = cloneSpeakerObjectArray(primarySet.tempSpeakerObjects);
                primarySet.uniqueSpeakers = [];
                for (const item of primarySet.tempSpeakerObjects) {
                   if (!primarySet.uniqueSpeakers.includes(item.speaker)) primarySet.uniqueSpeakers.push(item.speaker);
@@ -620,6 +621,7 @@ function loadAudio(audio, sectionData) {
                populateChaptersAndRegions(primarySet);
                if (undoStates[undoLevel].secState && undoStates[undoLevel].secState.length > 0) {
                   secondarySet.tempSpeakerObjects = undoStates[undoLevel].secState;
+                  secondarySet.speakerObjects = cloneSpeakerObjectArray(secondarySet.tempSpeakerObjects);
                   secondarySet.uniqueSpeakers = [];
                   for (const item of secondarySet.tempSpeakerObjects) {
                      if (!secondarySet.uniqueSpeakers.includes(item.speaker)) secondarySet.uniqueSpeakers.push(item.speaker);
@@ -1896,6 +1898,7 @@ function loadAudio(audio, sectionData) {
       editLockedRegion(currSpeakerSet.tempSpeakerObjects[regionIndex], chaps); 
 
       editPanel.click(); // fixes buttons needing to be clicked twice (unknown cause!)
+      console.log(currSpeakerSet.speakerObjects)
    }
 
    /**
@@ -2314,6 +2317,7 @@ function loadAudio(audio, sectionData) {
    }
 
    function discardRegionChanges(forceDiscard) { // resets tempSpeakerObjects to speakerObjects
+      console.log(currSpeakerSet.speakerObjects)
       if (!discardButton.classList.contains("disabled") || forceDiscard) {
          let confirm = false;
          if (!forceDiscard) { confirm = window.confirm("Are you sure you want to discard changes?"); }
