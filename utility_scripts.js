@@ -393,6 +393,7 @@ function loadAudio(audio, sectionData) {
    const audioContainer = document.getElementById("audioContainer");
    const dualModeCheckbox = document.getElementById("dual-mode-checkbox");
    const wave = document.getElementsByTagName("wave")[0];
+   const caretContainer = document.getElementById("caret-container");
    const primaryCaret = document.getElementById("primary-caret");
    const secondaryCaret = document.getElementById("secondary-caret");
    const chapters = document.getElementById("chapters");
@@ -693,6 +694,7 @@ function loadAudio(audio, sectionData) {
       hoverSpeaker.style.marginLeft = newOffset + "px";
    }
 
+   /** Click handler, manages selected region/s, set swapping, region playing */
    function handleRegionClick(region, e) { 
       contextMenu.classList.remove('visible');
       e.stopPropagation();
@@ -783,18 +785,27 @@ function loadAudio(audio, sectionData) {
       return -1;
    }
 
+   /** 
+   * Builds metadata-server.pl URL to retrieve audio at given version 
+   * @param {string} version GS document version to retrieve from (nminus-X)
+   */
    function getAudioURLFromVersion(version) {
       let base_url = gs.variables.metadataServerURL + "?a=get-archives-assocfile&site=" + gs.xsltParams.site_name + "&c=" + gs.cgiParams.c + "&d=" + gs.cgiParams.d;
       if (version != "current") base_url += "&dv=" + version // get fldv if not current version
       return base_url  + "&assocname=" + gs.documentMetadata.Audio;
    }
 
+   /** 
+   * Builds metadata-server.pl URL to retrieve CSV at given version 
+   * @param {string} version GS document version to retrieve from (nminus-X)
+   */
    function getCSVURLFromVersion(version) {
       let base_url = gs.variables.metadataServerURL + "?a=get-archives-assocfile&site=" + gs.xsltParams.site_name + "&c=" + gs.cgiParams.c + "&d=" + gs.cgiParams.d;
       if (version != "current") base_url += "&dv=" + version; // get fldv if not current version
       return base_url  + "&assocname=" + "structured-audio.csv";
    }
 
+   /** Version click handler, first checks if changes have been made and shows popup if true */
    function versionClicked(e) {
       let unsavedChanges = false;
       if (undoStates.length > 0) { // only if changes have been made in track being changed FROM
@@ -819,6 +830,7 @@ function loadAudio(audio, sectionData) {
       } else changeVersion(e);
    }
 
+   /** Changes current audio/csv set to clicked version's equivalent */
    function changeVersion(e) {  
       removeCurrentRegion();
       const audio_url = getAudioURLFromVersion(e.target.id);
@@ -857,6 +869,7 @@ function loadAudio(audio, sectionData) {
       loadCSVFile(csv_url, setToUpdate, true);
    }
    
+   /** Utility function to download audio */
    function downloadURI(loc, name) {
       let link = document.createElement("a");
       link.download = name;
@@ -864,6 +877,7 @@ function loadAudio(audio, sectionData) {
       link.click();
    }
 
+   /** Document click listener for context box closure and region deselection */
    function documentClicked(e) { // document on click
       contextMenu.classList.remove('visible'); 
       timelineMenu.classList.remove('visible'); 
@@ -892,7 +906,8 @@ function loadAudio(audio, sectionData) {
       }
    }
 
-   function drawPadlock(parent) { // draws and returns padlock image at given parent
+   /** Draws and returns padlock image at given parent element */
+   function drawPadlock(parent) { 
       let lockedImg = document.createElement("img");
       lockedImg.src = interface_bootstrap_images + "lock.svg";
       parent.prepend(lockedImg); 
@@ -924,6 +939,7 @@ function loadAudio(audio, sectionData) {
       }
    }
 
+   /** Locks or unlocks selected region based on its current state */
    function toggleLockSelected(e) { // locks / unlocks selected region(s) 
       if (e) e.stopPropagation(); 
       if (getCurrentRegionIndex() != -1 && currentRegions.length <= 1) { // single selected
@@ -963,6 +979,7 @@ function loadAudio(audio, sectionData) {
       addUndoState(primarySet, secondarySet, currSpeakerSet.isSecondary, dualMode, "lockChange", getCurrentRegionIndex());
    }
 
+   /** TODO */
    function timelineMenuHideClicked(e) { // hides all regions and chapter/edit divs
       if (!e.target.children[0].checked) {
          e.target.children[0].checked = true;
@@ -1413,12 +1430,14 @@ function loadAudio(audio, sectionData) {
          flashChapters(); 
          reloadChapterList();
       } 
+      showAudioLoader();
       if (toPrimary) {
          if (!currCaretIsPrimary) {
             if (canvasImages[selectedVersions[0]]) { // if waveform image exists in cache
                drawImageOnWaveform(canvasImages[selectedVersions[0]]);
-               hideAudioLoader();
-            } else showAudioLoader();
+               // hideAudioLoader();
+            } 
+            // else showAudioLoader();
             const url = gs.variables.metadataServerURL + "?a=get-archives-assocfile&site=" + gs.xsltParams.site_name + 
                         "&c=" + gs.cgiParams.c + "&d=" + gs.cgiParams.d + "&assocname=" + gs.documentMetadata.Audio;
             wavesurfer.load(url); 
@@ -1429,8 +1448,9 @@ function loadAudio(audio, sectionData) {
          if (currCaretIsPrimary) {
             if (canvasImages[selectedVersions[1]]) { 
                drawImageOnWaveform(canvasImages[selectedVersions[1]]);
-               hideAudioLoader();
-            } else showAudioLoader();
+               // hideAudioLoader();
+            } 
+            // else showAudioLoader();
             const url = gs.variables.metadataServerURL + "?a=get-archives-assocfile&site=" + gs.xsltParams.site_name + 
                         "&c=" + gs.cgiParams.c + "&d=" + gs.cgiParams.d + "&assocname=" + gs.documentMetadata.Audio + "&dv=nminus-4";
             wavesurfer.load(url); 
@@ -1898,7 +1918,6 @@ function loadAudio(audio, sectionData) {
       editLockedRegion(currSpeakerSet.tempSpeakerObjects[regionIndex], chaps); 
 
       editPanel.click(); // fixes buttons needing to be clicked twice (unknown cause!)
-      console.log(currSpeakerSet.speakerObjects)
    }
 
    /**
@@ -2317,7 +2336,6 @@ function loadAudio(audio, sectionData) {
    }
 
    function discardRegionChanges(forceDiscard) { // resets tempSpeakerObjects to speakerObjects
-      console.log(currSpeakerSet.speakerObjects)
       if (!discardButton.classList.contains("disabled") || forceDiscard) {
          let confirm = false;
          if (!forceDiscard) { confirm = window.confirm("Are you sure you want to discard changes?"); }
@@ -2632,19 +2650,28 @@ function loadAudio(audio, sectionData) {
       setTimeout(() => { chapters.style.backgroundColor = "rgb(40, 54, 58)" }, 500);
    }
 
-   function fullscreenChanged() { // fullscreen onChange handler, increases waveform height & adjusts padding/margin
+   /** Fullscreen onChange handler, increases waveform height & adjusts padding/margin */
+   function fullscreenChanged() { 
       if (!audioContainer.classList.contains("fullscreen")) {
          audioContainer.classList.add("fullscreen");
-         wavesurfer.setHeight(175);
+         wavesurfer.setHeight(175); // increase waveform height
+         caretContainer.style.paddingLeft = "2rem"; 
+         caretContainer.style.height = wavesurfer.getHeight() + "px"; // set height to waveform height
+         audioContainer.prepend(caretContainer); // attach to audioContainer (otherwise doesn't show due to AC being fullscreen)
       } else  {
          audioContainer.classList.remove("fullscreen");
          wavesurfer.setHeight(140);
+         caretContainer.style.paddingLeft = "0";
+         caretContainer.style.height = wavesurfer.getHeight() + "px";
+         audioContainer.parentElement.prepend(caretContainer); // move back up in DOM hierarchy 
       }
+      setTimeout(() => { // ensures waveform shows  
+         zoomOutButton.click();
+         zoomInButton.click();
+      }, 250);
    }
 
-   /**
-   * Enables / disables the fullscreen view of audio player / editor
-   */
+   /** Enables / disables the fullscreen view of audio player / editor */
    function toggleFullscreen() { 
       if ((document.fullscreenElement && document.fullscreenElement !== null) ||
         (document.webkitFullscreenElement && document.webkitFullscreenElement !== null) ||
@@ -2660,10 +2687,6 @@ function loadAudio(audio, sectionData) {
             audioContainer.msRequestFullscreen();
          }
       }
-      setTimeout(() => { // ensures waveform shows  
-         zoomOutButton.click();
-         zoomInButton.click();
-      }, 250);
    }
 }
 
