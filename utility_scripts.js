@@ -791,7 +791,7 @@ function loadAudio(audio, sectionData) {
    */
    function getAudioURLFromVersion(version) {
       let base_url = gs.variables.metadataServerURL + "?a=get-archives-assocfile&site=" + gs.xsltParams.site_name + "&c=" + gs.cgiParams.c + "&d=" + gs.cgiParams.d;
-      if (version != "current") base_url += "&dv=" + version // get fldv if not current version
+      if (version !== "current") base_url += "&dv=" + version // get fldv if not current version
       return base_url  + "&assocname=" + gs.documentMetadata.Audio;
    }
 
@@ -801,7 +801,7 @@ function loadAudio(audio, sectionData) {
    */
    function getCSVURLFromVersion(version) {
       let base_url = gs.variables.metadataServerURL + "?a=get-archives-assocfile&site=" + gs.xsltParams.site_name + "&c=" + gs.cgiParams.c + "&d=" + gs.cgiParams.d;
-      if (version != "current") base_url += "&dv=" + version; // get fldv if not current version
+      if (version !== "current") base_url += "&dv=" + version; // get fldv if not current version
       return base_url  + "&assocname=" + "structured-audio.csv";
    }
 
@@ -1430,29 +1430,32 @@ function loadAudio(audio, sectionData) {
          flashChapters(); 
          reloadChapterList();
       } 
-      showAudioLoader();
       if (toPrimary) {
          if (!currCaretIsPrimary) {
+            showAudioLoader();
             if (canvasImages[selectedVersions[0]]) { // if waveform image exists in cache
                drawImageOnWaveform(canvasImages[selectedVersions[0]]);
                // hideAudioLoader();
             } 
             // else showAudioLoader();
-            const url = gs.variables.metadataServerURL + "?a=get-archives-assocfile&site=" + gs.xsltParams.site_name + 
+            let url = gs.variables.metadataServerURL + "?a=get-archives-assocfile&site=" + gs.xsltParams.site_name + 
                         "&c=" + gs.cgiParams.c + "&d=" + gs.cgiParams.d + "&assocname=" + gs.documentMetadata.Audio;
+            if (selectedVersions[0] !== "current") url += "&dv=" + selectedVersions[0];
             wavesurfer.load(url); 
          }
          primaryCaret.src = interface_bootstrap_images + "caret-right-fill.svg";
          secondaryCaret.src = interface_bootstrap_images + "caret-right.svg";
       } else {
          if (currCaretIsPrimary) {
+            showAudioLoader();
             if (canvasImages[selectedVersions[1]]) { 
                drawImageOnWaveform(canvasImages[selectedVersions[1]]);
                // hideAudioLoader();
             } 
             // else showAudioLoader();
-            const url = gs.variables.metadataServerURL + "?a=get-archives-assocfile&site=" + gs.xsltParams.site_name + 
-                        "&c=" + gs.cgiParams.c + "&d=" + gs.cgiParams.d + "&assocname=" + gs.documentMetadata.Audio + "&dv=nminus-4";
+            let url = gs.variables.metadataServerURL + "?a=get-archives-assocfile&site=" + gs.xsltParams.site_name + 
+                        "&c=" + gs.cgiParams.c + "&d=" + gs.cgiParams.d + "&assocname=" + gs.documentMetadata.Audio + "&dv=" + selectedVersions[1];
+            if (selectedVersions[1] !== "current") url += "&dv=" + selectedVersions[1];
             wavesurfer.load(url); 
          }
          primaryCaret.src = interface_bootstrap_images + "caret-right.svg";
@@ -1864,8 +1867,8 @@ function loadAudio(audio, sectionData) {
          versionSelectMenu.style.height = wave.clientHeight + wavesurfer.timeline.container.clientHeight + document.getElementById("audio-toolbar").clientHeight - 6 + "px";
          if (e.target.parentElement.id.includes("top")) versionSelectMenu.classList.add("versionTop");
          else versionSelectMenu.classList.remove("versionTop");
-         for (version of versionSelectMenu.children) { // handle disabling of regions if being viewed
-            if (selectedVersions.includes(version.id)) version.classList.add('disabled');
+         for (version of versionSelectMenu.children) { // handle disabling of regions if being viewed lllllllllll
+            if (selectedVersions.includes(version.id) || selectedVersions.includes(version.innerText)) version.classList.add('disabled');
             else version.classList.remove('disabled');
          }
       }
@@ -2269,15 +2272,15 @@ function loadAudio(audio, sectionData) {
    }
 
    function saveRegionChanges() { // saves tempSpeakerObjects to speakerObjects
-      // if (!saveButton.classList.contains("disabled")) {
-      //    toggleSavePopup();
-      //    // old save functionality
-      //    currSpeakerSet.speakerObjects = cloneSpeakerObjectArray(currSpeakerSet.tempSpeakerObjects);
-      //    editsMade = false;
-      //    removeCurrentRegion();
-      //    reloadRegionsAndChapters();
-      //    console.log("saved changes.");
-      // }
+      if (!saveButton.classList.contains("disabled")) {
+         toggleSavePopup();
+         // old save functionality
+         // currSpeakerSet.speakerObjects = cloneSpeakerObjectArray(currSpeakerSet.tempSpeakerObjects);
+         // editsMade = false;
+         // removeCurrentRegion();
+         // reloadRegionsAndChapters();
+         // console.log("saved changes.");
+      }
    }
 
    /**

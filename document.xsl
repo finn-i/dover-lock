@@ -166,8 +166,8 @@
 					</div>
 				</div>
 				<div id="caret-container">
-					<img src="interfaces/{$interface_name}/images/bootstrap/caret-right-fill.svg" id="primary-caret" />
-					<img src="interfaces/{$interface_name}/images/bootstrap/caret-right.svg" id="secondary-caret" />
+					<img src="interfaces/{$interface_name}/images/bootstrap/caret-right-fill.svg" title="Change selected set" id="primary-caret" />
+					<img src="interfaces/{$interface_name}/images/bootstrap/caret-right.svg" title="Change selected set" id="secondary-caret" />
 				</div>
         <div id="audioContainer" tabindex="0">
 						<div id="context-menu">
@@ -181,8 +181,8 @@
 							<div class="timeline-menu-item" id="timeline-menu-dualmode">Dual Mode <input type="checkbox" id="dual-mode-checkbox" /></div>
 							<hr></hr>
 							<div class="timeline-menu-subtext">Show Differences</div>
-							<div class="timeline-menu-item disabled" id="timeline-menu-region">Region:Start/Stop <input type="checkbox" /></div>
-							<div class="timeline-menu-item disabled" id="timeline-menu-speaker">Speaker Label <input type="checkbox" /></div>
+							<div class="timeline-menu-item disabled" id="timeline-menu-region" title="Show regions with conflicting start/end times">Region:Start/Stop <input type="checkbox" /></div>
+							<div class="timeline-menu-item disabled" id="timeline-menu-speaker" title="Show regions with identical start/end times but conflicting speaker label">Speaker Label <input type="checkbox" /></div>
 						</div>
             <div id="hover-speaker"><xsl:text> </xsl:text></div>
 						<div id="version-select-menu"><xsl:text> </xsl:text></div>
@@ -191,13 +191,13 @@
 							<span id="waveform-loader">Loading audio</span>
 							<div class="track-set-label" id="track-set-label-top">
 								<span>Current</span>
-								<img class="track-arrow" src="interfaces/{$interface_name}/images/bootstrap/caret-right.svg"/>
+								<img class="track-arrow" title="Change version" src="interfaces/{$interface_name}/images/bootstrap/caret-right.svg"/>
 							</div>
 							<div class="track-set-label" id="track-set-label-bottom">
-								<span>nminus-1</span>
-								<img class="track-arrow" src="interfaces/{$interface_name}/images/bootstrap/caret-right.svg"/>
+								<span>Previous(1)</span>
+								<img class="track-arrow" title="Change version" src="interfaces/{$interface_name}/images/bootstrap/caret-right.svg"/>
 							</div>
-							<img src="interfaces/{$interface_name}/images/bootstrap/gear.svg" id="timeline-menu-button" />
+							<img src="interfaces/{$interface_name}/images/bootstrap/gear.svg" title="Open timeline menu" id="timeline-menu-button" />
 						</div>
             <div id="wave-timeline"><xsl:text> </xsl:text></div>
             <div id="audio-toolbar">
@@ -226,12 +226,12 @@
 							<div id="chapters-container">
 								<div id="chapter-search-box">
 									<img src="interfaces/{$interface_name}/images/bootstrap/funnel.svg" />
-								 	<input type="text" placeholder="Search.." id="chapter-search-input" maxlength="40" />
+								 	<input type="text" placeholder="Search.." title="Filter chapters and regions by speaker name" id="chapter-search-input" maxlength="40" />
 								</div>
 								<div id="chapters"><text></text></div>
 							</div>
 							<div id="edit-panel">
-								<button class="ui-button" id="create-button" title="Create a new region">Create New Region</button>
+								<button class="ui-button" id="create-button" title="Create a new region on the waveform">Create New Region</button>
 								<div class="flex-row" id="save-discard">
 									<button class="ui-button" id="discard-button" title="Discard changes made to regions">Discard Changes</button>
 									<img class="disabled" src="interfaces/{$interface_name}/images/bootstrap/undo.svg" id="undo-button" title="Undo changes made to regions" />
@@ -246,7 +246,7 @@
 										Speaker:&#160;&#160;&#160;&#160;
 										<input type="text" id="speaker-input" required="true" maxlength="40" />
 										<div>
-											<input type="checkbox" id="change-all-checkbox" value="all" name="change-speaker" title="Enable to select all speakers with the same name" />
+											<input type="checkbox" id="change-all-checkbox" value="all" name="change-speaker" title="Select all speakers with the same name" />
 											<label id="change-all-label" for="change-all-checkbox">Select all</label>
 										</div>
 									</div>
