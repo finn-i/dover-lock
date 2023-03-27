@@ -696,8 +696,9 @@ function loadAudio(audio, sectionData) {
 
    /** Click handler, manages selected region/s, set swapping, region playing */
    function handleRegionClick(region, e) { 
-      contextMenu.classList.remove('visible');
+      if (e.target.classList.contains("region-menu")) return;
       e.stopPropagation();
+      contextMenu.classList.remove('visible');
       if (!editMode) { // play region audio on click
          wavesurfer.play(region.start); // plays from start of region
       } else { // select or deselect current region
@@ -844,7 +845,7 @@ function loadAudio(audio, sectionData) {
             showAudioLoader();
             // if (canvasImages[e.target.id]) { // if waveform image exists in cache
             //    drawImageOnWaveform(canvasImages[e.target.id]);
-            // }
+            // }            
             wavesurfer.load(audio_url); // load audio
          } else {
             $(".region-top").remove();
@@ -879,6 +880,7 @@ function loadAudio(audio, sectionData) {
 
    /** Document click listener for context box closure and region deselection */
    function documentClicked(e) { // document on click
+      if (e.target.classList.contains("region-menu")) return;
       contextMenu.classList.remove('visible'); 
       timelineMenu.classList.remove('visible'); 
       versionSelectMenu.classList.remove('visible'); 
@@ -909,9 +911,24 @@ function loadAudio(audio, sectionData) {
    /** Draws and returns padlock image at given parent element */
    function drawPadlock(parent) { 
       let lockedImg = document.createElement("img");
+      lockedImg.classList.add("region-padlock");
       lockedImg.src = interface_bootstrap_images + "lock.svg";
       parent.prepend(lockedImg); 
       return lockedImg;
+   }
+
+   /**
+    * Draws triple dot menu button and attaches click listener
+    * @param {object} region Region to attach menu button to
+    */
+   function drawMenuButton(region) {
+      let menuImg = document.createElement("img");
+      menuImg.src = interface_bootstrap_images + "menu.svg";
+      menuImg.classList.add("region-menu");
+      menuImg.addEventListener("click", e => {
+         audioContainer.dispatchEvent(new MouseEvent("contextmenu", { clientX: menuImg.x + 20, clientY: menuImg.y + 5 }));
+      });
+      region.element.prepend(menuImg);
    }
 
    /**
@@ -1285,9 +1302,20 @@ function loadAudio(audio, sectionData) {
    }
 
    function onRightClick(e) {
-      if (e.target.classList.contains("wavesurfer-region") && editMode) {
+      if ((e.target.classList.contains("wavesurfer-region") || e.target.id === "audioContainer") && editMode) {
          e.preventDefault();
          e.stopPropagation();
+         // set current region to clicked region LLLLLLL
+         let clickedRegion;
+         for (const reg of currSpeakerSet.tempSpeakerObjects) {
+            if (reg.region.element.title == e.target.title) {
+               clickedRegion = reg;
+               break;
+            }
+         }
+         // console.log(clickedRegion)
+         // currentRegion = clickedRegion.region;
+         // clickedRegion.region.update({ color: "red" })
          contextMenu.classList.add("visible");
          if (e.clientX + 200 > $(window).width()) contextMenu.style.left = ($(window).width() - 220) + "px"; // ensure menu doesn't clip on right
          else contextMenu.style.left = e.clientX + "px";
@@ -1440,7 +1468,10 @@ function loadAudio(audio, sectionData) {
             // else showAudioLoader();
             let url = gs.variables.metadataServerURL + "?a=get-archives-assocfile&site=" + gs.xsltParams.site_name + 
                         "&c=" + gs.cgiParams.c + "&d=" + gs.cgiParams.d + "&assocname=" + gs.documentMetadata.Audio;
-            if (selectedVersions[0] !== "current") url += "&dv=" + selectedVersions[0];
+            if (selectedVersions[0] !== "current") {
+               if (selectedVersions[0].includes("Previous")) url += "&dv=" + selectedVersions[0].replace("Previous(", "nminus-").replace(")", "");
+               else url += "&dv=" + selectedVersions[0];
+            }
             wavesurfer.load(url); 
          }
          primaryCaret.src = interface_bootstrap_images + "caret-right-fill.svg";
@@ -1454,8 +1485,11 @@ function loadAudio(audio, sectionData) {
             } 
             // else showAudioLoader();
             let url = gs.variables.metadataServerURL + "?a=get-archives-assocfile&site=" + gs.xsltParams.site_name + 
-                        "&c=" + gs.cgiParams.c + "&d=" + gs.cgiParams.d + "&assocname=" + gs.documentMetadata.Audio + "&dv=" + selectedVersions[1];
-            if (selectedVersions[1] !== "current") url += "&dv=" + selectedVersions[1];
+                        "&c=" + gs.cgiParams.c + "&d=" + gs.cgiParams.d + "&assocname=" + gs.documentMetadata.Audio;
+            if (selectedVersions[1] !== "current") {
+               if (selectedVersions[1].includes("Previous")) url += "&dv=" + selectedVersions[1].replace("Previous(", "nminus-").replace(")", "");
+               else url += "&dv=" + selectedVersions[1];
+            }
             wavesurfer.load(url); 
          }
          primaryCaret.src = interface_bootstrap_images + "caret-right.svg";
@@ -1690,6 +1724,7 @@ function loadAudio(audio, sectionData) {
             let lock = drawPadlock(associatedReg.element);
             attachPadlockListener(lock, associatedReg, false);
          }
+         if (selected) drawMenuButton(associatedReg);
       }
       if (waveformSpinner.style.display == 'block') $(".wavesurfer-region").fadeOut(100); // keep regions hidden until wavesurfer.load() has finished
       let handles = document.getElementsByTagName('handle');
@@ -1809,9 +1844,12 @@ function loadAudio(audio, sectionData) {
          region.update({ color: "rgba(255, 255, 255, 0.3)" });
       }
       if (editMode && currSpeakerSet.tempSpeakerObjects[getIndexOfRegion(region)] && currSpeakerSet.tempSpeakerObjects[getIndexOfRegion(region)].locked 
-         && region.element.getElementsByTagName("img").length == 0) { // hovered region is locked
+         && region.element.getElementsByClassName("region-padlock").length == 0) { // hovered region is locked
          let lock = drawPadlock(region.element);
          attachPadlockListener(lock, region, false);
+      }
+      if (editMode && region.element.getElementsByClassName("region-menu").length == 0) {
+         drawMenuButton(region);
       }
    }
 
@@ -1824,7 +1862,13 @@ function loadAudio(audio, sectionData) {
             let index = region.id.replace("region", "");
             region.update({ color: regionColourSet.find(item => item.name === currSpeakerSet.tempSpeakerObjects[index].speaker).colour + regionTransparency });
          }
-         if (region.element.getElementsByTagName("img").length > 0 && !isCurrentRegion(region) && !isInCurrentRegions(region)) region.element.firstChild.remove();
+         if (region.element.getElementsByTagName("img").length > 0 && !isCurrentRegion(region) && !isInCurrentRegions(region)) {
+            for (let child of Array.from(region.element.children)) {
+               if (child.tagName == "IMG") {
+                  child.remove();
+               }
+            }
+         }
       } else {
          region.update({ color: "rgba(255, 255, 255, 0.1)" });
       }
@@ -1867,7 +1911,7 @@ function loadAudio(audio, sectionData) {
          versionSelectMenu.style.height = wave.clientHeight + wavesurfer.timeline.container.clientHeight + document.getElementById("audio-toolbar").clientHeight - 6 + "px";
          if (e.target.parentElement.id.includes("top")) versionSelectMenu.classList.add("versionTop");
          else versionSelectMenu.classList.remove("versionTop");
-         for (version of versionSelectMenu.children) { // handle disabling of regions if being viewed lllllllllll
+         for (version of versionSelectMenu.children) { // handle disabling of regions if being viewed
             if (selectedVersions.includes(version.id) || selectedVersions.includes(version.innerText)) version.classList.add('disabled');
             else version.classList.remove('disabled');
          }

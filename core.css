@@ -1869,7 +1869,7 @@ input::-webkit-inner-spin-button {
 	background-color: rgba(200, 200, 200, 0.4) !important;
 } */
 
-.wavesurfer-region img {
+.region-padlock {
 	position: absolute;
 	right: 0;
 	width: 1rem !important;
@@ -1877,6 +1877,14 @@ input::-webkit-inner-spin-button {
 	padding-top: 0.2rem;
 	padding-right: 0.2rem;
 	/* pointer-events: none; */
+}
+
+.region-menu {
+	position: absolute;
+	left: 0;
+	width: 1rem !important;
+	height: 1rem;
+	padding: 0.2rem 0.1rem;
 }
 
 .wavesurfer-handle {
