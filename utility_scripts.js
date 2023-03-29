@@ -300,6 +300,7 @@ function loadAudio(audio, sectionData) {
    const inputFile = sectionData;
    const mod_meta_base_url = gs.xsltParams.library_name + "?a=g&rt=r&ro=0&s=ModifyMetadata&s1.collection=" + gs.cgiParams.c + "&s1.site=" + gs.xsltParams.site_name + "&s1.d=" + gs.cgiParams.d;
    const interface_bootstrap_images = "interfaces/" + gs.xsltParams.interface_name + "/images/bootstrap/"; // path to toolbar images
+   const GSSTATUS_SUCCESS = 11; // more information on codes found in: GSStatus.java
 
    let editMode = false;
    let currentRegion = {speaker: '', start: '', end: ''};
@@ -529,7 +530,18 @@ function loadAudio(audio, sectionData) {
    });
    showAudioLoader();
    
-   if (gs.variables.allowEditing === '0') { editButton.style.display = "none" }
+   if (gs.variables.allowEditing === '0') { 
+      editButton.style.display = "none" 
+      document.getElementById("track-set-label-top").style.display = "none";
+      document.getElementById("track-set-label-bottom").style.display = "none";
+      timelineMenuDualMode.classList.add('disabled');
+      timelineMenuRegionConflict.classList.add('disabled');
+      timelineMenuSpeakerConflict.classList.add('disabled');
+      // $("#timeline-menu-dualmode").remove();
+      // $(".timeline-menu-subtext").remove();
+      // $("#timeline-menu-region").remove();
+      // $("#timeline-menu-speaker").remove();
+   }
 
    wavesurfer.load(audio);
 
@@ -652,26 +664,42 @@ function loadAudio(audio, sectionData) {
             data: { a: 'get-fldv-info', site: gs.xsltParams.site_name, c: gs.cgiParams.c, d: gs.cgiParams.d },
             dataType: "json",
          }).then(data => {
-            for (const version of ["current", ...data]) {
-               canvasImages[version] = undefined;
-               let menuItem = document.createElement("div");
-               menuItem.classList.add("version-select-menu-item");
-               menuItem.id = version;
-               let text = version.includes("nminus") ? version.replace("nminus-", "Previous(") + ")" : version;
-               menuItem.innerText = text.charAt(0).toUpperCase() + text.slice(1);
-               menuItem.addEventListener('click', versionClicked);
-               let dataObj = { a: 'get-archives-metadata', site: gs.xsltParams.site_name, c: gs.cgiParams.c, d: gs.cgiParams.d, metaname: "commitmessage" };
-               if (version != "current") Object.assign(dataObj, {dv: version});
-               $.ajax({ // get commitmessage metadata to show as hover tooltip
-                  type: "GET",
-                  url: gs.variables.metadataServerURL,
-                  data: dataObj,
-                  dataType: "text",
-               }).then(comment => {
-                  menuItem.title = "Commit message: " + comment;
-                  versionSelectMenu.append(menuItem);
-                  [...versionSelectMenu.children].sort((a,b) => a.innerText>b.innerText?1:-1).forEach(n=>versionSelectMenu.appendChild(n)); // sort alphabetically
-               }, (error) => { console.log("get-archives-metadata error:"); console.log(error); });
+            if (data.includes("ERROR")) {
+               console.log("get-fldv-info Error: " + data);
+            } else if (data.length === 0) { // TODO needs testing
+               console.log("no previous versions found");
+               $(".track-set-label").hide();
+               // $(".timeline-menu-item").hide();
+               timelineMenuDualMode.remove();
+               timelineMenuRegionConflict.remove();
+               timelineMenuSpeakerConflict.remove();
+               $(".timeline-menu-subtext").remove();
+            } else {
+               for (const version of ["current", ...data]) {
+                  canvasImages[version] = undefined;
+                  let menuItem = document.createElement("div");
+                  menuItem.classList.add("version-select-menu-item");
+                  menuItem.id = version;
+                  let text = version.includes("nminus") ? version.replace("nminus-", "Previous(") + ")" : version;
+                  menuItem.innerText = text.charAt(0).toUpperCase() + text.slice(1);
+                  menuItem.addEventListener('click', versionClicked);
+                  let dataObj = { a: 'get-archives-metadata', site: gs.xsltParams.site_name, c: gs.cgiParams.c, d: gs.cgiParams.d, metaname: "commitmessage" };
+                  if (version != "current") Object.assign(dataObj, {dv: version});
+                  $.ajax({ // get commitmessage metadata to show as hover tooltip
+                     type: "GET",
+                     url: gs.variables.metadataServerURL,
+                     data: dataObj,
+                     dataType: "text",
+                  }).then(comment => {
+                     if (data.includes("ERROR")) {
+                        console.log("get-archives-metadata Error: " + data);
+                     } else {
+                        menuItem.title = "Commit message: " + comment;
+                        versionSelectMenu.append(menuItem);
+                        [...versionSelectMenu.children].sort((a,b) => a.innerText>b.innerText?1:-1).forEach(n=>versionSelectMenu.appendChild(n)); // sort alphabetically
+                     }
+                  }, (error) => { console.log("get-archives-metadata error:"); console.log(error); });
+               }
             }
          }, (error) => { console.log("get-fldv-info error:"); console.log(error); });
          initialLoad = false;
@@ -913,6 +941,7 @@ function loadAudio(audio, sectionData) {
       let lockedImg = document.createElement("img");
       lockedImg.classList.add("region-padlock");
       lockedImg.src = interface_bootstrap_images + "lock.svg";
+      lockedImg.title = "This region is locked. Click to unlock region.";
       parent.prepend(lockedImg); 
       return lockedImg;
    }
@@ -921,14 +950,15 @@ function loadAudio(audio, sectionData) {
     * Draws triple dot menu button and attaches click listener
     * @param {object} region Region to attach menu button to
     */
-   function drawMenuButton(region) {
+   function drawRegionMenuButton(region) {
       let menuImg = document.createElement("img");
       menuImg.src = interface_bootstrap_images + "menu.svg";
       menuImg.classList.add("region-menu");
+      menuImg.title = "Show region options";
       menuImg.addEventListener("click", e => {
          audioContainer.dispatchEvent(new MouseEvent("contextmenu", { clientX: menuImg.x + 20, clientY: menuImg.y + 5 }));
       });
-      region.element.prepend(menuImg);
+      region.element.append(menuImg);
    }
 
    /**
@@ -969,7 +999,9 @@ function loadAudio(audio, sectionData) {
             contextLock.innerText = "Unlock Selected";
          } else {
             chapters.childNodes[currIndex].childNodes[1].classList.add('hide');
-            if (currSpeakerSet.tempSpeakerObjects[currIndex].region.element.getElementsByTagName("img").length > 0) currSpeakerSet.tempSpeakerObjects[currIndex].region.element.firstChild.remove();
+            if (currSpeakerSet.tempSpeakerObjects[currIndex].region.element.getElementsByClassName("region-padlock").length > 0) {
+               currSpeakerSet.tempSpeakerObjects[currIndex].region.element.getElementsByClassName("region-padlock")[0].remove();
+            }
             contextLock.innerText = "Lock Selected";
          }
       } else if (currentRegions.length > 1) { // multiple selected
@@ -978,15 +1010,15 @@ function loadAudio(audio, sectionData) {
             currSpeakerSet.tempSpeakerObjects[idx].locked = toLock;
             if (currSpeakerSet.tempSpeakerObjects[idx].locked) {
                chapters.childNodes[idx].childNodes[1].classList.remove('hide'); 
-               if (currSpeakerSet.tempSpeakerObjects[idx].region.element.getElementsByTagName("img").length == 0) {
+               if (currSpeakerSet.tempSpeakerObjects[idx].region.element.getElementsByClassName("region-padlock").length == 0) {
                   let lock = drawPadlock(currSpeakerSet.tempSpeakerObjects[idx].region.element);
                   attachPadlockListener(lock, currSpeakerSet.tempSpeakerObjects[idx].region, false);
                }
                contextLock.innerText = "Unlock Selected";
             } else {
                chapters.childNodes[idx].childNodes[1].classList.add('hide');
-               if (currSpeakerSet.tempSpeakerObjects[idx].region.element.getElementsByTagName("img").length > 0) {
-                  currSpeakerSet.tempSpeakerObjects[idx].region.element.firstChild.remove();
+               if (currSpeakerSet.tempSpeakerObjects[idx].region.element.getElementsByClassName("region-padlock").length > 0) {
+                  currSpeakerSet.tempSpeakerObjects[idx].region.element.getElementsByClassName("region-padlock")[0].remove();
                }
                contextLock.innerText = "Lock Selected";
             }
@@ -996,7 +1028,6 @@ function loadAudio(audio, sectionData) {
       addUndoState(primarySet, secondarySet, currSpeakerSet.isSecondary, dualMode, "lockChange", getCurrentRegionIndex());
    }
 
-   /** TODO */
    function timelineMenuHideClicked(e) { // hides all regions and chapter/edit divs
       if (!e.target.children[0].checked) {
          e.target.children[0].checked = true;
@@ -1301,12 +1332,16 @@ function loadAudio(audio, sectionData) {
       }
    }
 
+   /**
+    * Shows context menu with various region options
+    * @param {MouseEvent} e Either right click event or left click triple menu click event 
+    */
    function onRightClick(e) {
-      if ((e.target.classList.contains("wavesurfer-region") || e.target.id === "audioContainer") && editMode) {
+      if ((e.target.classList.contains("wavesurfer-region") || e.target.id === "audioContainer" || e.target.classList.contains("chapter")) && editMode) {
          e.preventDefault();
          e.stopPropagation();
          // set current region to clicked region LLLLLLL
-         let clickedRegion;
+         let clickedRegion; // could be used to select clicked region
          for (const reg of currSpeakerSet.tempSpeakerObjects) {
             if (reg.region.element.title == e.target.title) {
                clickedRegion = reg;
@@ -1314,8 +1349,6 @@ function loadAudio(audio, sectionData) {
             }
          }
          // console.log(clickedRegion)
-         // currentRegion = clickedRegion.region;
-         // clickedRegion.region.update({ color: "red" })
          contextMenu.classList.add("visible");
          if (e.clientX + 200 > $(window).width()) contextMenu.style.left = ($(window).width() - 220) + "px"; // ensure menu doesn't clip on right
          else contextMenu.style.left = e.clientX + "px";
@@ -1356,10 +1389,14 @@ function loadAudio(audio, sectionData) {
             contextOverdub.classList.remove('disabled');
          } else {
             contextDelete.classList.add('disabled');
+            contextLock.classList.add('disabled');
             contextReplace.classList.add('disabled');
             contextOverdub.classList.add('disabled');
          }
-         if (currentRegion && currentRegion.speaker !== "") contextDelete.classList.remove('disabled');
+         if (currentRegion && currentRegion.speaker !== "") {
+            contextDelete.classList.remove('disabled');
+            contextLock.classList.remove('disabled');
+         }
          if (dualMode) { // manipulate context texts
             const actionDirection = currSpeakerSet.isSecondary ? "Up" : "Down";
             contextReplace.innerHTML = "Replace Selected " + actionDirection;
@@ -1408,7 +1445,9 @@ function loadAudio(audio, sectionData) {
       reloadRegionsAndChapters();
       if (dualMode) {
          if (!secondaryLoaded) {
-            const secondaryCSVURL = "http://localhost:8383/greenstone3/cgi-bin/metadata-server.pl?a=get-archives-assocfile&site=" + gs.xsltParams.site_name + "&c=" + gs.collectionMetadata.indexStem + 
+            // const secondaryCSVURL = "http://localhost:8383/greenstone3/cgi-bin/metadata-server.pl?a=get-archives-assocfile&site=" + gs.xsltParams.site_name + "&c=" + gs.collectionMetadata.indexStem + 
+            //                         "&d=" + gs.documentMetadata.Identifier + "&assocname=structured-audio.csv&dv=nminus-1";
+            const secondaryCSVURL = gs.variables.metadataServerURL + "?a=get-archives-assocfile&site=" + gs.xsltParams.site_name + "&c=" + gs.collectionMetadata.indexStem + 
                                     "&d=" + gs.documentMetadata.Identifier + "&assocname=structured-audio.csv&dv=nminus-1";
             loadCSVFile(secondaryCSVURL, secondarySet);
             secondaryLoaded = true; // ensure secondarySet doesn't get re-read > once
@@ -1516,8 +1555,10 @@ function loadAudio(audio, sectionData) {
    function hideAudioLoader() {
       $('.wavesurfer-region').fadeIn(100);
       $(".chapter").fadeIn(100);
-      $("#track-set-label-top").fadeIn(100);
-      if (dualMode) $('#track-set-label-bottom').fadeIn(100);
+      if (gs.variables.allowEditing !== "0") {
+         $("#track-set-label-top").fadeIn(100);
+         if (dualMode) $('#track-set-label-bottom').fadeIn(100);
+      }
       waveformSpinner.style.display = 'none';
       loader.style.display = "none";
       for (const ele of editPanel.children) ele.classList.remove("disabled");
@@ -1618,34 +1659,39 @@ function loadAudio(audio, sectionData) {
          type: "GET",
          url: filename,
          dataType: "text",
-      }).then(function(data) {
-         let dataLines = data.split(/\r\n|\n/);
-         let headers;
-         let startIndex = 0;
-         speakerSet.uniqueSpeakers = []; // used for obtaining unique colours
-         speakerSet.speakerObjects = []; // list of speaker items
+      }).then(data => {
+         if (data.includes("ERROR")) {
+            console.log("loadCSVFile Error: " + data);
+         } else {
+            let dataLines = data.split(/\r\n|\n/);
+            let headers;
+            let startIndex = 0;
+            speakerSet.uniqueSpeakers = []; // used for obtaining unique colours
+            speakerSet.speakerObjects = []; // list of speaker items
 
-         if (dataLines[0].split(',').length === 3) headers = ["speaker", "start", "end"]; // assume speaker, start, end
-         else if (dataLines[0].split(',').length === 4) headers = ["speaker", "start", "end", "locked"]; // assume speaker, start, end, locked
+            if (dataLines[0].split(',').length === 3) headers = ["speaker", "start", "end"]; // assume speaker, start, end
+            else if (dataLines[0].split(',').length === 4) headers = ["speaker", "start", "end", "locked"]; // assume speaker, start, end, locked
+            // TODO ELSE??
 
-         for (let i = startIndex; i < dataLines.length; i++) {
-            let data = dataLines[i].split(',');
-            if (data.length == headers.length) {
-               let item = {};
-               for (let j = 0; j < headers.length; j++) {
-                  item[headers[j]] = data[j];
-                  if (j == 0 && !speakerSet.uniqueSpeakers.includes(data[j])) {
-                     speakerSet.uniqueSpeakers.push(data[j]);
+            for (let i = startIndex; i < dataLines.length; i++) {
+               let data = dataLines[i].split(',');
+               if (data.length == headers.length) {
+                  let item = {};
+                  for (let j = 0; j < headers.length; j++) {
+                     item[headers[j]] = data[j];
+                     if (j == 0 && !speakerSet.uniqueSpeakers.includes(data[j])) {
+                        speakerSet.uniqueSpeakers.push(data[j]);
+                     }
                   }
+                  if (headers.length === 3) item['locked'] = false;
+                  speakerSet.speakerObjects.push(item);
                }
-               if (headers.length === 3) item['locked'] = false;
-               speakerSet.speakerObjects.push(item);
             }
+            speakerSet.tempSpeakerObjects = cloneSpeakerObjectArray(speakerSet.speakerObjects);
+            if (!speakerSet.isSecondary || forcePopulate) populateChaptersAndRegions(speakerSet); // prevents secondary set being drawn on first load
+            resetUndoStates(); // undo stack init
          }
-         speakerSet.tempSpeakerObjects = cloneSpeakerObjectArray(speakerSet.speakerObjects);
-         if (!speakerSet.isSecondary || forcePopulate) populateChaptersAndRegions(speakerSet); // prevents secondary set being drawn on first load
-         resetUndoStates(); // undo stack init
-      }, (error) => { console.log("loadCSVFile error:"); console.log(error); });
+      }, (error) => { console.log("loadCSVFile Error:"); console.log(error); });
    }
 
    /**
@@ -1724,7 +1770,7 @@ function loadAudio(audio, sectionData) {
             let lock = drawPadlock(associatedReg.element);
             attachPadlockListener(lock, associatedReg, false);
          }
-         if (selected) drawMenuButton(associatedReg);
+         if (selected) drawRegionMenuButton(associatedReg);
       }
       if (waveformSpinner.style.display == 'block') $(".wavesurfer-region").fadeOut(100); // keep regions hidden until wavesurfer.load() has finished
       let handles = document.getElementsByTagName('handle');
@@ -1832,6 +1878,9 @@ function loadAudio(audio, sectionData) {
          }
          if (isCurrentRegion(region) || isInCurrentRegions(region)) {
             colour = "rgba(255, 50, 50, 0.5)";
+            if (editMode && region.element.getElementsByClassName("region-menu").length == 0) {
+               drawRegionMenuButton(region);
+            }
          }
          if (chapters.childNodes[getIndexOfRegion(region)]) chapters.childNodes[getIndexOfRegion(region)].style.backgroundColor = colour;
       }
@@ -1847,9 +1896,6 @@ function loadAudio(audio, sectionData) {
          && region.element.getElementsByClassName("region-padlock").length == 0) { // hovered region is locked
          let lock = drawPadlock(region.element);
          attachPadlockListener(lock, region, false);
-      }
-      if (editMode && region.element.getElementsByClassName("region-menu").length == 0) {
-         drawMenuButton(region);
       }
    }
 
@@ -1979,7 +2025,9 @@ function loadAudio(audio, sectionData) {
          else { // remove lock if yes
             region.locked = false; 
             if (region.region && region.region.element.firstChild) region.region.element.firstChild.remove(); // remove region padlock
-            if (chapters.childNodes[getCurrentRegionIndex()].childNodes[1].tagName === "IMG") chapters.childNodes[getCurrentRegionIndex()].childNodes[1].classList.add('hide'); // remove chapter padlock
+            if (chapters.childNodes[getCurrentRegionIndex()] && chapters.childNodes[getCurrentRegionIndex()].childNodes[1].tagName === "IMG") {
+               chapters.childNodes[getCurrentRegionIndex()].childNodes[1].classList.add('hide'); // remove chapter padlock
+            }
          }
       }
    }
@@ -2342,7 +2390,7 @@ function loadAudio(audio, sectionData) {
             data: { "o": "json", "s1.a": "inc-fldv-nminus1" }
          }).then((out) => {
             console.log('fldv inc success with status code: ' + out.page.pageResponse.status.code);
-            if (out.page.pageResponse.status.code == 11) { // more information on codes found in: GSStatus.java
+            if (out.page.pageResponse.status.code == GSSTATUS_SUCCESS) { 
                ajaxSetCommitMeta();
             }
          }, (error) => { console.log("inc-fldv-nminus1 error:\n" + error) });
@@ -2359,7 +2407,7 @@ function loadAudio(audio, sectionData) {
          data: { "o" : "json", "s1.a": "set-archives-metadata", "s1.metaname": "commitmessage", "s1.metavalue": savePopupCommitMsg.value.trim(), "s1.metamode": "override" },
       }).then((out) => {
          console.log('commit success with status code: ' + out.page.pageResponse.status.code);
-         if (out.page.pageResponse.status.code == 11) {
+         if (out.page.pageResponse.status.code == GSSTATUS_SUCCESS) {
             ajaxSetAssocFile();
          }
       }, (error) => { console.log("commit_msg_url error:"); console.log(error); });

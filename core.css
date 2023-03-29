@@ -436,6 +436,23 @@ body.dAction #gs_banner h2 {
 #bannerLinks li.current a { text-decoration: underline; background-position: 0 0;}
 #bannerLinks img.spacer { display: table-cell; }
 
+#userMenu {
+    position: absolute;
+    z-index: 100;
+    list-style: none outside none;
+    margin: 0px;
+    padding: 0px;
+    font-size: 90%;
+    width: 150px;
+
+}
+
+#userMenu li {
+    float: left;
+    text-align: left;
+    width: 100%;
+}
+
 
 /* css to make the classifier list pretty */
 .navList {
@@ -874,7 +891,6 @@ table{
 
 #loginTable{
 	margin: auto;
-	width: 25%;
 }
 
 .map_canvas_full{

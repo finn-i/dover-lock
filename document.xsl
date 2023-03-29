@@ -202,24 +202,24 @@
             <div id="wave-timeline"><xsl:text> </xsl:text></div>
             <div id="audio-toolbar">
 							<div class="flex-leftalign toolbar-section">
-								<img src="interfaces/{$interface_name}/images/bootstrap/chapters.svg" id="chapterButton" title="Click to expand audio chapters" />
-								<img src="interfaces/{$interface_name}/images/bootstrap/zoom-out.svg" id="zoomOutButton" title="Click to zoom out" />
+								<img src="interfaces/{$interface_name}/images/bootstrap/chapters.svg" id="chapterButton" title="Expand audio chapters" />
+								<img src="interfaces/{$interface_name}/images/bootstrap/zoom-out.svg" id="zoomOutButton" title="Zoom out" />
 								<input type="range" min="0" max="200" value="50" id="zoom-slider" step="10" title="Click and drag to adjust zoom level" />
-								<img src="interfaces/{$interface_name}/images/bootstrap/zoom-in.svg" id="zoomInButton" title="Click to zoom in" />
+								<img src="interfaces/{$interface_name}/images/bootstrap/zoom-in.svg" id="zoomInButton" title="Zoom in" />
 							</div>
 							<div class="flex-centeralign toolbar-section">
-								<img src="interfaces/{$interface_name}/images/bootstrap/back.svg" id="backButton" title="Click to skip back" />
-								<img src="interfaces/{$interface_name}/images/bootstrap/play.svg" id="playPauseButton" title="Click to toggle play/pause" />
-								<img src="interfaces/{$interface_name}/images/bootstrap/forward.svg" id="forwardButton" title="Click to skip forwards" />
+								<img src="interfaces/{$interface_name}/images/bootstrap/back.svg" id="backButton" title="Skip back" />
+								<img src="interfaces/{$interface_name}/images/bootstrap/play.svg" id="playPauseButton" title="Toggle play/pause" />
+								<img src="interfaces/{$interface_name}/images/bootstrap/forward.svg" id="forwardButton" title="Skip forwards" />
 							</div>
 							<div class="flex-rightalign toolbar-section">
-								<img src="interfaces/{$interface_name}/images/bootstrap/edit.svg" id="editorModeButton" title="Click to toggle region edit panel" />
-								<img src="interfaces/{$interface_name}/images/bootstrap/download.svg" id="downloadButton" title="Click to download audio" />
+								<img src="interfaces/{$interface_name}/images/bootstrap/edit.svg" id="editorModeButton" title="Toggle region edit panel" />
+								<img src="interfaces/{$interface_name}/images/bootstrap/download.svg" id="downloadButton" title="Download audio" />
 								<div id="volume-container">
-									<img src="interfaces/{$interface_name}/images/bootstrap/unmute.svg" id="muteButton" title="Click to toggle mute" />
+									<img src="interfaces/{$interface_name}/images/bootstrap/unmute.svg" id="muteButton" title="Toggle mute" />
 									<input type="range" min="0" max="1" value="1" id="volume-slider" step="0.1" orient="vertical" title="Click and drag to adjust volume level" />
 								</div>
-								<img src="interfaces/{$interface_name}/images/bootstrap/fullscreen.svg" id="fullscreenButton" title="Click to toggle fullscreen mode" />
+								<img src="interfaces/{$interface_name}/images/bootstrap/fullscreen.svg" id="fullscreenButton" title="Toggle fullscreen mode" />
 							</div>
             </div>
 						<div id="audio-dropdowns">
