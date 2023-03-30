@@ -311,6 +311,7 @@ function loadAudio(audio, sectionData) {
    let dualMode = false;
    let secondaryLoaded = false;
    let selectedVersions = ['current'];
+   let previousVersionsExist = true;
 
    let waveformCursorX = 0;
    let snappedToX = 0;
@@ -537,10 +538,6 @@ function loadAudio(audio, sectionData) {
       timelineMenuDualMode.classList.add('disabled');
       timelineMenuRegionConflict.classList.add('disabled');
       timelineMenuSpeakerConflict.classList.add('disabled');
-      // $("#timeline-menu-dualmode").remove();
-      // $(".timeline-menu-subtext").remove();
-      // $("#timeline-menu-region").remove();
-      // $("#timeline-menu-speaker").remove();
    }
 
    wavesurfer.load(audio);
@@ -621,10 +618,11 @@ function loadAudio(audio, sectionData) {
       if (initialLoad) {
          if (inputFile.endsWith("csv")) { // diarization if csv
             itemType = "chapter";
-            if (localStorage.getItem('undoStates') && localStorage.getItem('undoLevel')) {
+            if (localStorage.getItem(gs.documentMetadata.Audio) !== null) {
+            // if (JSON.parse(localStorage.getItem(gs.documentMetadata.Audio)).undoStates && JSON.parse(localStorage.getItem(gs.documentMetadata.Audio)).undoLevel) {
                console.log('-- Loading regions from localStorage --');
-               undoStates = JSON.parse(localStorage.getItem('undoStates'));
-               undoLevel = JSON.parse(localStorage.getItem('undoLevel'));
+               undoStates = JSON.parse(localStorage.getItem(gs.documentMetadata.Audio)).undoStates;
+               undoLevel = JSON.parse(localStorage.getItem(gs.documentMetadata.Audio)).undoLevel;
                primarySet.tempSpeakerObjects = undoStates[undoLevel].state;
                primarySet.speakerObjects = cloneSpeakerObjectArray(primarySet.tempSpeakerObjects);
                primarySet.uniqueSpeakers = [];
@@ -666,8 +664,9 @@ function loadAudio(audio, sectionData) {
          }).then(data => {
             if (data.includes("ERROR")) {
                console.log("get-fldv-info Error: " + data);
-            } else if (data.length === 0) { // TODO needs testing
-               console.log("no previous versions found");
+            } else if (data.length === 0) {
+               previousVersionsExist = false;
+               // console.log("no previous versions found");
                $(".track-set-label").hide();
                // $(".timeline-menu-item").hide();
                timelineMenuDualMode.remove();
@@ -1340,7 +1339,6 @@ function loadAudio(audio, sectionData) {
       if ((e.target.classList.contains("wavesurfer-region") || e.target.id === "audioContainer" || e.target.classList.contains("chapter")) && editMode) {
          e.preventDefault();
          e.stopPropagation();
-         // set current region to clicked region LLLLLLL
          let clickedRegion; // could be used to select clicked region
          for (const reg of currSpeakerSet.tempSpeakerObjects) {
             if (reg.region.element.title == e.target.title) {
@@ -1443,10 +1441,8 @@ function loadAudio(audio, sectionData) {
       if (!dualMode) removeCurrentRegion();
       clearChapterSearch();
       reloadRegionsAndChapters();
-      if (dualMode) {
+      if (dualMode && previousVersionsExist) {  
          if (!secondaryLoaded) {
-            // const secondaryCSVURL = "http://localhost:8383/greenstone3/cgi-bin/metadata-server.pl?a=get-archives-assocfile&site=" + gs.xsltParams.site_name + "&c=" + gs.collectionMetadata.indexStem + 
-            //                         "&d=" + gs.documentMetadata.Identifier + "&assocname=structured-audio.csv&dv=nminus-1";
             const secondaryCSVURL = gs.variables.metadataServerURL + "?a=get-archives-assocfile&site=" + gs.xsltParams.site_name + "&c=" + gs.collectionMetadata.indexStem + 
                                     "&d=" + gs.documentMetadata.Identifier + "&assocname=structured-audio.csv&dv=nminus-1";
             loadCSVFile(secondaryCSVURL, secondarySet);
@@ -1671,7 +1667,7 @@ function loadAudio(audio, sectionData) {
 
             if (dataLines[0].split(',').length === 3) headers = ["speaker", "start", "end"]; // assume speaker, start, end
             else if (dataLines[0].split(',').length === 4) headers = ["speaker", "start", "end", "locked"]; // assume speaker, start, end, locked
-            // TODO ELSE??
+            else headers = ["speaker", "start", "end"]; // this should never be reached assuming input file has either 3 or four columns
 
             for (let i = startIndex; i < dataLines.length; i++) {
                let data = dataLines[i].split(',');
@@ -2564,9 +2560,10 @@ function loadAudio(audio, sectionData) {
          item.state = cloneSpeakerObjectArray(item.state);
          item.secState = cloneSpeakerObjectArray(item.secState);
       } 
-      localStorage.setItem('undoStates', JSON.stringify(undoStates)); // update localStorage items
-      localStorage.setItem('undoLevel', undoLevel);
-   }
+      // localStorage.setItem('undoStates', JSON.stringify(undoStates)); // update localStorage items
+      // localStorage.setItem('undoLevel', undoLevel);
+      localStorage.setItem(gs.documentMetadata.Audio, JSON.stringify({ "undoStates": undoStates, "undoLevel": undoLevel }));
+;   }
 
    /**
     * Returns to the previous state in the undo state list
@@ -2612,7 +2609,7 @@ function loadAudio(audio, sectionData) {
             editsMade = true;
             undoLevel--; // decrement undoLevel
             reloadRegionsAndChapters();
-            localStorage.setItem('undoLevel', undoLevel);
+            localStorage.setItem(gs.documentMetadata.Audio, { "undoLevel": undoLevel });
             if (undoLevel - 1 < 0) undoButton.classList.add("disabled");
             else undoButton.classList.remove("disabled");
          }
@@ -2659,7 +2656,7 @@ function loadAudio(audio, sectionData) {
             editsMade = true;  
             reloadRegionsAndChapters();
             undoLevel++; // increment undoLevel
-            localStorage.setItem('undoLevel', undoLevel);
+            localStorage.setItem(gs.documentMetadata.Audio, { "undoLevel": undoLevel });
             if (undoLevel + 1 > undoStates.length - 1) redoButton.classList.add("disabled");
             else redoButton.classList.remove("disabled");
          }
@@ -2670,8 +2667,7 @@ function loadAudio(audio, sectionData) {
    function resetUndoStates() { // clear undo history
       undoStates = [{state: cloneSpeakerObjectArray(primarySet.tempSpeakerObjects), secState: cloneSpeakerObjectArray(secondarySet.tempSpeakerObjects)}];
       undoLevel = 0;
-      localStorage.removeItem('undoLevel');
-      localStorage.removeItem('undoStates');
+      localStorage.removeItem(gs.documentMetadata.Audio);
       undoButton.classList.add("disabled");
       redoButton.classList.add("disabled");
    }

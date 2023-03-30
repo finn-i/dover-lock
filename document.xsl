@@ -302,6 +302,12 @@
 		</span>
 		<table id="tapeDetails">
 			<gsf:switch>
+				<gsf:metadata name='Side' />
+				<gsf:when test='exists'>
+					<tr><td id="fCol">Side:</td><td><gsf:metadata name="Side" highlight="highlight" /></td></tr>
+				</gsf:when>
+			</gsf:switch>
+			<gsf:switch>
 				<gsf:metadata name='Notes' />
 				<gsf:when test='exists'>
 					<tr><td id="fCol">Notes:</td><td><gsf:metadata name="Notes" highlight="highlight" /></td></tr>
