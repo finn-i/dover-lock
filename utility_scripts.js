@@ -301,6 +301,11 @@ function loadAudio(audio, sectionData) {
    const mod_meta_base_url = gs.xsltParams.library_name + "?a=g&rt=r&ro=0&s=ModifyMetadata&s1.collection=" + gs.cgiParams.c + "&s1.site=" + gs.xsltParams.site_name + "&s1.d=" + gs.cgiParams.d;
    const interface_bootstrap_images = "interfaces/" + gs.xsltParams.interface_name + "/images/bootstrap/"; // path to toolbar images
    const GSSTATUS_SUCCESS = 11; // more information on codes found in: GSStatus.java
+   const audioIdentifier = gs.xsltParams.site_name + ":" + gs.cgiParams.c + ":" + gs.cgiParams.d;
+   const backgroundColour = "rgb(29, 40, 47)";
+   const accentColour = "#66d640";
+   // const accentColour = "#F8C537";
+   const regionTransparency = "50";
 
    let editMode = false;
    let currentRegion = {speaker: '', start: '', end: ''};
@@ -330,9 +335,7 @@ function loadAudio(audio, sectionData) {
 
    let canvasImages = {}; // stores canvas images of each version for fast loading from cache
 
-   let accentColour = "#66d640";
-   // let accentColour = "#F8C537";
-   let regionTransparency = "50";
+   
    let colourbrewerSet = colorbrewer.Set2[8];
    let regionColourSet = [];
 
@@ -346,14 +349,15 @@ function loadAudio(audio, sectionData) {
       autoCenterImmediately: true,
       container: waveformContainer,
       backend: "WebAudio",
-      // backgroundColor: "rgb(40, 54, 58)",
-      backgroundColor: "rgb(29, 43, 47)",
+      // backgroundColor: "rgb(29, 43, 47)",
+      backgroundColor: backgroundColour,
       waveColor: "white",
       progressColor: accentColour,
       // progressColor: "grey",
-      // barWidth: 1,
+      // barWidth: 2,
+      barMinHeight: 1,
       // barHeight: 1.2,
-      // barGap: 2,
+      // barGap: 5,
       // barRadius: 1,
       height: 140,
       cursorColor: 'black',
@@ -390,6 +394,8 @@ function loadAudio(audio, sectionData) {
          }),
       ],
    });
+
+   wavesurfer.on("loading", prog => console.log(prog));
 
    // toolbar elements & event handlers
    const audioContainer = document.getElementById("audioContainer");
@@ -540,7 +546,7 @@ function loadAudio(audio, sectionData) {
       timelineMenuSpeakerConflict.classList.add('disabled');
    }
 
-   wavesurfer.load(audio);
+   wavesurfer.load(audio); // initial audio load
 
    // wavesurfer events
 
@@ -583,7 +589,6 @@ function loadAudio(audio, sectionData) {
    wavesurfer.on('region-update-end', handleRegionEdit); // end of click-drag event
    wavesurfer.on('region-updated', handleRegionSnap);
    wavesurfer.on('error', error => console.log(error));
-
    wavesurfer.on("play", () => { playPauseButton.src = interface_bootstrap_images + "pause.svg"; });
    wavesurfer.on("pause", () => { playPauseButton.src = interface_bootstrap_images + "play.svg"; });
    wavesurfer.on("mute", function(mute) { 
@@ -602,7 +607,6 @@ function loadAudio(audio, sectionData) {
    wavesurfer.on('ready', function() { // retrieve regions once waveforms have loaded
       window.onbeforeunload = (e) => {
          if (undoStates.length > 1) { 
-            console.log('undoStates.length: ' + undoStates.length);
             e.returnValue = "Data will be lost if you leave the page, are you sure?";
             return "Data will be lost if you leave the page, are you sure?";
          }
@@ -618,11 +622,10 @@ function loadAudio(audio, sectionData) {
       if (initialLoad) {
          if (inputFile.endsWith("csv")) { // diarization if csv
             itemType = "chapter";
-            if (localStorage.getItem(gs.documentMetadata.Audio) !== null) {
-            // if (JSON.parse(localStorage.getItem(gs.documentMetadata.Audio)).undoStates && JSON.parse(localStorage.getItem(gs.documentMetadata.Audio)).undoLevel) {
+            if (localStorage.getItem(audioIdentifier) !== null) {
                console.log('-- Loading regions from localStorage --');
-               undoStates = JSON.parse(localStorage.getItem(gs.documentMetadata.Audio)).undoStates;
-               undoLevel = JSON.parse(localStorage.getItem(gs.documentMetadata.Audio)).undoLevel;
+               undoStates = JSON.parse(localStorage.getItem(audioIdentifier)).undoStates;
+               undoLevel = JSON.parse(localStorage.getItem(audioIdentifier)).undoLevel;
                primarySet.tempSpeakerObjects = undoStates[undoLevel].state;
                primarySet.speakerObjects = cloneSpeakerObjectArray(primarySet.tempSpeakerObjects);
                primarySet.uniqueSpeakers = [];
@@ -1442,7 +1445,7 @@ function loadAudio(audio, sectionData) {
       clearChapterSearch();
       reloadRegionsAndChapters();
       if (dualMode && previousVersionsExist) {  
-         if (!secondaryLoaded) {
+         if (!secondaryLoaded && !initialLoad) {
             const secondaryCSVURL = gs.variables.metadataServerURL + "?a=get-archives-assocfile&site=" + gs.xsltParams.site_name + "&c=" + gs.collectionMetadata.indexStem + 
                                     "&d=" + gs.documentMetadata.Identifier + "&assocname=structured-audio.csv&dv=nminus-1";
             loadCSVFile(secondaryCSVURL, secondarySet);
@@ -2562,7 +2565,7 @@ function loadAudio(audio, sectionData) {
       } 
       // localStorage.setItem('undoStates', JSON.stringify(undoStates)); // update localStorage items
       // localStorage.setItem('undoLevel', undoLevel);
-      localStorage.setItem(gs.documentMetadata.Audio, JSON.stringify({ "undoStates": undoStates, "undoLevel": undoLevel }));
+      localStorage.setItem(audioIdentifier, JSON.stringify({ "undoStates": undoStates, "undoLevel": undoLevel }));
 ;   }
 
    /**
@@ -2609,7 +2612,7 @@ function loadAudio(audio, sectionData) {
             editsMade = true;
             undoLevel--; // decrement undoLevel
             reloadRegionsAndChapters();
-            localStorage.setItem(gs.documentMetadata.Audio, { "undoLevel": undoLevel });
+            localStorage.setItem(audioIdentifier, { "undoLevel": undoLevel });
             if (undoLevel - 1 < 0) undoButton.classList.add("disabled");
             else undoButton.classList.remove("disabled");
          }
@@ -2656,7 +2659,7 @@ function loadAudio(audio, sectionData) {
             editsMade = true;  
             reloadRegionsAndChapters();
             undoLevel++; // increment undoLevel
-            localStorage.setItem(gs.documentMetadata.Audio, { "undoLevel": undoLevel });
+            localStorage.setItem(audioIdentifier, { "undoLevel": undoLevel });
             if (undoLevel + 1 > undoStates.length - 1) redoButton.classList.add("disabled");
             else redoButton.classList.remove("disabled");
          }
@@ -2667,7 +2670,7 @@ function loadAudio(audio, sectionData) {
    function resetUndoStates() { // clear undo history
       undoStates = [{state: cloneSpeakerObjectArray(primarySet.tempSpeakerObjects), secState: cloneSpeakerObjectArray(secondarySet.tempSpeakerObjects)}];
       undoLevel = 0;
-      localStorage.removeItem(gs.documentMetadata.Audio);
+      localStorage.removeItem(audioIdentifier);
       undoButton.classList.add("disabled");
       redoButton.classList.add("disabled");
    }
@@ -2738,7 +2741,7 @@ function loadAudio(audio, sectionData) {
 
    function flashChapters() { // flashes chapters a lighter colour momentarily to indicate an update/change
       chapters.style.backgroundColor = "rgb(66, 84, 88)";
-      setTimeout(() => { chapters.style.backgroundColor = "rgb(40, 54, 58)" }, 500);
+      setTimeout(() => chapters.style.backgroundColor = backgroundColour, 500);
    }
 
    /** Fullscreen onChange handler, increases waveform height & adjusts padding/margin */

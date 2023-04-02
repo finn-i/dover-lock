@@ -2236,5 +2236,6 @@ input::-webkit-inner-spin-button {
 :root { /* css vars */
 	--audio-accent-colour: #66d640;
 	/* --audio-bg-colour: rgb(40, 54, 58); */
-	--audio-bg-colour: rgb(29, 43, 47);
+	/* --audio-bg-colour: rgb(29, 43, 47); */
+	--audio-bg-colour: rgb(29, 40, 47);
 }
