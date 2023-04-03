@@ -11,9 +11,9 @@ available_pipelines = [p.modelId for p in HfApi().list_models(filter="pyannote-a
 print(available_pipelines)
 
 parser = argparse.ArgumentParser()
-parser.add_argument('inputfile', help="Audio input file")
+parser.add_argument('inputfile', type=argparse.FileType("r"), help="Audio input file")
 parser.add_argument('authtoken', help="Auth/access token") # https://github.com/pyannote/pyannote-audio
-parser.add_argument('outputfile', nargs="?", help="Output file (.csv, optional)")
+parser.add_argument('outputfile', type=argparse.FileType("w"), nargs="?", help="Output file (.csv, optional)")
 parser.add_argument("--mingap", type=int, help="Minimum gap size in seconds between same-speaker segments", default=1)
 args = parser.parse_args()
 
