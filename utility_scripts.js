@@ -1748,7 +1748,7 @@ function loadAudio(audio, sectionData) {
          if (regionColourSet.find(item => item.name === data.tempSpeakerObjects[i].speaker)) {
             regColour = regionColourSet.find(item => item.name === data.tempSpeakerObjects[i].speaker).colour;
          } else {
-            regionColourSet.push({ name: data.tempSpeakerObjects[i].speaker, colour: colourbrewerSet[i%8]});
+            regionColourSet.push({ name: data.tempSpeakerObjects[i].speaker, colour: colourbrewerSet[(i+1)%8]});
             regColour = regionColourSet.at(-1).colour;
          }
 
@@ -1905,7 +1905,12 @@ function loadAudio(audio, sectionData) {
          // } else if (!(wavesurfer.getCurrentTime() + 0.1 < region.end && wavesurfer.getCurrentTime() > region.start)) {
          } else {
             let index = region.id.replace("region", "");
-            region.update({ color: regionColourSet.find(item => item.name === currSpeakerSet.tempSpeakerObjects[index].speaker).colour + regionTransparency });
+            if (regionColourSet.find(item => item.name === currSpeakerSet.tempSpeakerObjects[index].speaker)) {
+               region.update({ color: regionColourSet.find(item => item.name === currSpeakerSet.tempSpeakerObjects[index].speaker).colour + regionTransparency });
+            } else {
+               regionColourSet.push({ name: currSpeakerSet.tempSpeakerObjects[index].speaker, colour: colourbrewerSet[(index+1)%8]});
+               region.update({ color: regionColourSet.at(-1).colour + regionTransparency });
+            }
          }
          if (region.element.getElementsByTagName("img").length > 0 && !isCurrentRegion(region) && !isInCurrentRegions(region)) {
             for (let child of Array.from(region.element.children)) {
