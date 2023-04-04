@@ -6,9 +6,9 @@ parser = argparse.ArgumentParser(
   description = "Given an audio file, removes background noise. Outputs file as 'cleaned_[fileName]'",
   formatter_class = argparse.ArgumentDefaultsHelpFormatter, # includes default values in help menu
 ) 
-parser.add_argument("inputfile", type=argparse.FileType("r"), help="Audio input file (.wav)")
+parser.add_argument("inputfile", help="Audio input file (.wav)")
 parser.add_argument("outputdir", help="Audio output directory", default=".")
-parser.add_argument("-p", "--pretrainedURL", type=str, help="URL of pretrained model", default="shahules786/mayavoz-waveunet-valentini-28spk")
+parser.add_argument("-p", "--pretrainedURL", help="URL of pretrained model", default="shahules786/mayavoz-waveunet-valentini-28spk")
 args = parser.parse_args()
 
 fileText, fileExtension = os.path.splitext(getattr(args, "inputfile"))
