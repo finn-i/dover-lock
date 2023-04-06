@@ -451,19 +451,19 @@ function loadAudio(audio, sectionData) {
    const savePopupCommit = document.getElementById("save-popup-commit");
    const savePopupCommitMsg = document.getElementById("commit-message");
 
-   audioContainer.addEventListener('fullscreenchange', (e) => { fullscreenChanged() });
+   audioContainer.addEventListener('fullscreenchange', (e) => fullscreenChanged());
    audioContainer.addEventListener('contextmenu', onRightClick);
    audioContainer.addEventListener("keyup", keyUp);
    audioContainer.addEventListener("keydown", keyDown);
-   dualModeCheckbox.addEventListener("change", () => { dualModeChanged() });
-   wave.addEventListener('scroll', (e) => { waveformScrolled() })
+   dualModeCheckbox.addEventListener("change", () => dualModeChanged());
+   wave.addEventListener('scroll', (e) => waveformScrolled())
    wave.addEventListener('mousemove', (e) => waveformCursorX = e.x);
    primaryCaret.addEventListener("click", (e) => caretClicked(e.target.id));
    secondaryCaret.addEventListener("click", (e) => caretClicked(e.target.id));
    chapters.style.height = "0px";
    chaptersContainer.style.height = "0px";
    editPanel.style.height = "0px";
-   chapterButton.addEventListener("click", () => { toggleChapters() });
+   chapterButton.addEventListener("click", () => toggleChapters());
    chapterSearchInput.addEventListener("input", chapterSearchInputChange)
    zoomOutButton.addEventListener("click", () => { zoomSlider.stepDown(); zoomSlider.dispatchEvent(new Event("input")) });
    zoomInButton.addEventListener("click", () => { zoomSlider.stepUp(); zoomSlider.dispatchEvent(new Event("input")) });
@@ -502,7 +502,7 @@ function loadAudio(audio, sectionData) {
    timelineMenu.addEventListener("click", e => e.stopPropagation());
    timelineMenuButton.addEventListener("click", timelineMenuToggle);
    timelineMenuHide.addEventListener("click", timelineMenuHideClicked);
-   timelineMenuDualMode.addEventListener("click", () => { dualModeChanged() });
+   timelineMenuDualMode.addEventListener("click", () => dualModeChanged());
    timelineMenuRegionConflict.addEventListener("click", showStartStopConflicts);
    timelineMenuSpeakerConflict.addEventListener("click", showSpeakerNameConflicts);
 
@@ -1449,6 +1449,7 @@ function loadAudio(audio, sectionData) {
             const secondaryCSVURL = gs.variables.metadataServerURL + "?a=get-archives-assocfile&site=" + gs.xsltParams.site_name + "&c=" + gs.collectionMetadata.indexStem + 
                                     "&d=" + gs.documentMetadata.Identifier + "&assocname=structured-audio.csv&dv=nminus-1";
             loadCSVFile(secondaryCSVURL, secondarySet);
+            console.log(secondarySet.tempSpeakerObjects)
             secondaryLoaded = true; // ensure secondarySet doesn't get re-read > once
          }
          document.getElementById("caret-container").style.display = "flex";
@@ -1687,7 +1688,8 @@ function loadAudio(audio, sectionData) {
                }
             }
             speakerSet.tempSpeakerObjects = cloneSpeakerObjectArray(speakerSet.speakerObjects);
-            if (!speakerSet.isSecondary || forcePopulate) populateChaptersAndRegions(speakerSet); // prevents secondary set being drawn on first load
+            populateChaptersAndRegions(speakerSet); // draw on waveform
+            // if (!speakerSet.isSecondary || forcePopulate) populateChaptersAndRegions(speakerSet); // prevents secondary set being drawn on first load
             resetUndoStates(); // undo stack init
          }
       }, (error) => { console.log("loadCSVFile Error:"); console.log(error); });
