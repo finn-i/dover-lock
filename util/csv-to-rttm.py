@@ -13,22 +13,19 @@ parser.add_argument("-id", "--recordingid", help="ID of diarization data (e.g. a
 args = parser.parse_args()
 
 inputFile = getattr(args, "inputfile")
-print(inputFile)
-fileText, fileExtension = os.path.splitext(getattr(args, "inputfile"))
-fileName = fileText + fileExtension
 outputFile = getattr(args, "outputfile")
 recordingID = getattr(args, "recordingid")
 
 try:
-  if "csv" not in fileExtension.lower():
-    sys.exit("ERROR: Input file: " + fileName + " is not a CSV")
+  if "csv" not in inputFile.lower():
+    sys.exit("ERROR: Input file: " + inputFile + " is not a CSV")
   if "rttm" not in outputFile.lower():
     sys.exit("ERROR: Output file: " + outputFile + " is not a RTTM")
   if recordingID is None:  
-    recordingID = fileName
-  print("starting conversion of input file '" + fileName + "' to RTTM...")
+    recordingID = inputFile
+  print("starting conversion of input file '" + inputFile + "' to RTTM...")
   with open(outputFile, mode="w") as rttm_writer:
-    with open(fileName, "r") as csv_input:
+    with open(inputFile, "r") as csv_input:
       reader = csv.reader(csv_input, delimiter=",")
       for i, line in enumerate(reader):
         rttm_writer.write(" ".join(["SPEAKER", recordingID, "1", line[1], str(Decimal(line[2])-Decimal(line[1])), "<NA>", "<NA>", line[0], "<NA>", "<NA>"]) + "\n")
