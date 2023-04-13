@@ -346,7 +346,7 @@ function loadAudio(audio, sectionData) {
    let initialLoad = true;
    
    wavesurfer = WaveSurfer.create({ // wavesurfer options
-      autoCenterImmediately: true,
+      // autoCenterImmediately: true,
       container: waveformContainer,
       backend: "WebAudio",
       // backgroundColor: "rgb(29, 43, 47)",
@@ -363,6 +363,7 @@ function loadAudio(audio, sectionData) {
       cursorColor: 'black',
       // maxCanvasWidth: 32000,
       minPxPerSec: 15, // default 20
+      fillParent: false,
       partialRender: true, // use the PeakCache to improve rendering speed of large waveforms
       pixelRatio: 1, // 1 results in faster rendering
       scrollParent: true,
@@ -378,7 +379,6 @@ function loadAudio(audio, sectionData) {
             secondaryFontColor: "white",
             notchPercentHeight: "0",
             fontSize: "12",
-            // zoomDebounce: 30,
             fontFamily: "Courier New"
          }),
          WaveSurfer.cursor.create({
@@ -394,8 +394,6 @@ function loadAudio(audio, sectionData) {
          }),
       ],
    });
-
-   wavesurfer.on("loading", prog => console.log(prog));
 
    // toolbar elements & event handlers
    const audioContainer = document.getElementById("audioContainer");
@@ -707,9 +705,12 @@ function loadAudio(audio, sectionData) {
          initialLoad = false;
       }
       // fixes blank waveform/regions when loading Current -> Prev.1 -> Prev.2
-      zoomSlider.value = 25;
-      zoomSlider.dispatchEvent(new Event("input"));
-      wavesurfer.zoom(50 / 4);
+      // zoomSlider.value = 60;
+      // console.log(zoomSlider.value);
+      // zoomSlider.dispatchEvent(new Event("input"));
+      wavesurfer.zoom((zoomSlider.value + 4) / 4);
+      wavesurfer.zoom((zoomSlider.value) / 4);
+
       hideAudioLoader();
    });
 
@@ -2395,9 +2396,11 @@ function loadAudio(audio, sectionData) {
             url: mod_meta_base_url,
             data: { "o": "json", "s1.a": "inc-fldv-nminus1" }
          }).then((out) => {
-            console.log('fldv inc success with status code: ' + out.page.pageResponse.status.code);
             if (out.page.pageResponse.status.code == GSSTATUS_SUCCESS) { 
+               console.log('fldv inc success with status code: ' + out.page.pageResponse.status.code);
                ajaxSetCommitMeta();
+            } else {
+               console.log('fldv inc ERROR with status code: ' + out.page.pageResponse.status.code);
             }
          }, (error) => { console.log("inc-fldv-nminus1 error:\n" + error) });
          toggleSavePopup();

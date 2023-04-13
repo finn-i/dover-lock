@@ -23,7 +23,7 @@ try:
     sys.exit("ERROR: Output file: " + outputFile + " is not a RTTM")
   if recordingID is None:  
     recordingID = inputFile
-  print("starting conversion of input file '" + inputFile + "' to RTTM...")
+  print("starting conversion of input file: " + inputFile + " to RTTM...")
   with open(outputFile, mode="w") as rttm_writer:
     with open(inputFile, "r") as csv_input:
       reader = csv.reader(csv_input, delimiter=",")

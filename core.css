@@ -1426,6 +1426,7 @@ width:100%
     background-color: white;
 		position: relative;
 		overflow-y: hidden;
+		transition: none;
 }
 
 #audio-toolbar {
@@ -1483,9 +1484,9 @@ width:100%
 	pointer-events: none !important;
 }
 
-@supports (-moz-appearance:none) { /* bad results in chrome, safari not tested */
+@supports (-moz-appearance:none) {
 	.audio-scroll {
-		scroll-behavior: smooth;
+		/* scroll-behavior: smooth; */
 	}
 }
 

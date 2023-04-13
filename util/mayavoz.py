@@ -8,7 +8,7 @@ parser = argparse.ArgumentParser(
 ) 
 parser.add_argument("inputfile", help="Audio input file (.wav)")
 parser.add_argument("outputdir", help="Audio output directory", default=".")
-parser.add_argument("-p", "--pretrainedURL", help="URL of pretrained model", default="shahules786/mayavoz-waveunet-valentini-28spk")
+parser.add_argument("-p", "--pretrainedURL", help="URL of pretrained model", default="shahules786/mayavoz-demucs-ms-snsd-20")
 args = parser.parse_args()
 
 fileText, fileExtension = os.path.splitext(getattr(args, "inputfile"))
