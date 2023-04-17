@@ -204,7 +204,7 @@
 							<div class="flex-leftalign toolbar-section">
 								<img src="interfaces/{$interface_name}/images/bootstrap/chapters.svg" id="chapterButton" title="Expand audio chapters" />
 								<img src="interfaces/{$interface_name}/images/bootstrap/zoom-out.svg" id="zoomOutButton" title="Zoom out" />
-								<input type="range" min="0" max="200" value="50" id="zoom-slider" step="10" title="Click and drag to adjust zoom level" />
+								<input type="range" min="4" max="200" value="50" id="zoom-slider" step="10" title="Click and drag to adjust zoom level" />
 								<img src="interfaces/{$interface_name}/images/bootstrap/zoom-in.svg" id="zoomInButton" title="Zoom in" />
 							</div>
 							<div class="flex-centeralign toolbar-section">
@@ -301,6 +301,12 @@
 			<xsl:call-template name="choose-title" />
 		</span>
 		<table id="tapeDetails">
+			<gsf:switch>
+				<gsf:metadata name='UnnamedIndex' />
+				<gsf:when test='exists'>
+					<tr><td id="fCol">Unnamed Index:</td><td><gsf:metadata name="UnnamedIndex" highlight="highlight" /></td></tr>
+				</gsf:when>
+			</gsf:switch>
 			<gsf:switch>
 				<gsf:metadata name='Side' />
 				<gsf:when test='exists'>

@@ -469,7 +469,7 @@ function loadAudio(audio, sectionData) {
    playPauseButton.addEventListener("click", () => { wavesurfer.playPause() });
    forwardButton.addEventListener("click", () => { wavesurfer.skipForward(); });
    editButton.addEventListener("click", toggleEditMode); 
-   downloadButton.addEventListener("click", () => { downloadURI(audio, audio.split(".dir/")[1]) }); 
+   downloadButton.addEventListener("click", () => { downloadURI(audio, gs.documentMetadata.Audio) }); 
    muteButton.addEventListener("click", () => { 
       if (volumeSlider.value == 0) wavesurfer.setMute(false) 
       else wavesurfer.setMute(true) 
@@ -2390,7 +2390,6 @@ function loadAudio(audio, sectionData) {
    function commitChanges() {
       if (savePopupCommitMsg.value && savePopupCommitMsg.value.length > 0) {
          console.log('committing with message: ' + savePopupCommitMsg.value);
-         // inc fldv_history
          $.ajax({
             type: "GET",
             url: mod_meta_base_url,
@@ -2401,6 +2400,7 @@ function loadAudio(audio, sectionData) {
                ajaxSetCommitMeta();
             } else {
                console.log('fldv inc ERROR with status code: ' + out.page.pageResponse.status.code);
+               // TODO output tangible error message from out.page.pageResponse [unsure of property, do same for all two(three?) calls]
             }
          }, (error) => { console.log("inc-fldv-nminus1 error:\n" + error) });
          toggleSavePopup();
@@ -2418,7 +2418,7 @@ function loadAudio(audio, sectionData) {
          console.log('commit success with status code: ' + out.page.pageResponse.status.code);
          if (out.page.pageResponse.status.code == GSSTATUS_SUCCESS) {
             ajaxSetAssocFile();
-         }
+         } // TODO else error message
       }, (error) => { console.log("commit_msg_url error:"); console.log(error); });
    }
 
