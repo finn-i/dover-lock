@@ -2073,6 +2073,30 @@ input::-webkit-inner-spin-button {
 	color: white;
 }
 
+#filter-menu {
+	position: absolute;
+	display: none;
+	flex-direction: row;
+	flex-wrap: nowrap;
+	justify-content: space-between;
+	align-items: center;
+	z-index: 21;
+	background: rgb(20, 30, 32);
+	color: white;
+	box-shadow: 1px 1px 15px -5px black;
+	border: 1px solid #eee;
+	margin: 2px;
+	padding: 0.2rem;
+}
+
+#filter-menu.show {
+	display: flex;
+}
+
+#filter-menu input {
+	width: 30%;
+}
+
 #chapters-container {
 	min-width: 30%;
 	max-width: 50%;
@@ -2088,7 +2112,7 @@ input::-webkit-inner-spin-button {
 }
 
 #chapters-container img {
-	pointer-events: none;
+	/* pointer-events: none; */
 	width: 1.5rem;
 	padding: 0.2rem;
 }

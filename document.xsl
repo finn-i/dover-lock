@@ -225,8 +225,12 @@
 						<div id="audio-dropdowns">
 							<div id="chapters-container">
 								<div id="chapter-search-box">
-									<img src="interfaces/{$interface_name}/images/bootstrap/funnel.svg" />
 								 	<input type="text" placeholder="Search.." title="Filter chapters and regions by speaker name" id="chapter-search-input" maxlength="40" />
+									<img src="interfaces/{$interface_name}/images/bootstrap/funnel.svg" id="funnel-button" />
+								</div>
+								<div id="filter-menu">
+									Min: <span id="filter-min-label">00</span><input type="range" min="0" max="50" value="0" id="filter-min" title="Set the minimum region length" />
+									Max: <span id="filter-max-label">50</span><input type="range" min="0" max="50" value="50" id="filter-max" title="Set the maximum region length" />
 								</div>
 								<div id="chapters"><text></text></div>
 							</div>

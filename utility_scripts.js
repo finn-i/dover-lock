@@ -306,12 +306,13 @@ function loadAudio(audio, sectionData) {
    const accentColour = "#66d640";
    // const accentColour = "#F8C537";
    const regionTransparency = "50";
-
+   
    let editMode = false;
    let currentRegion = {speaker: '', start: '', end: ''};
    let currentRegions = [];
 
    let itemType;
+   let longestDuration = 0;
 
    let dualMode = false;
    let secondaryLoaded = false;
@@ -407,6 +408,10 @@ function loadAudio(audio, sectionData) {
    const editPanel = document.getElementById("edit-panel");
    const chapterButton = document.getElementById("chapterButton");
    const chapterSearchInput = document.getElementById("chapter-search-input");
+   const chapterFilterButton = document.getElementById("funnel-button");
+   const chapterFilterMenu = document.getElementById("filter-menu");
+   const chapterFilterMin = document.getElementById("filter-min");
+   const chapterFilterMax = document.getElementById("filter-max");
    const zoomOutButton = document.getElementById("zoomOutButton");
    const zoomSlider = document.getElementById("zoom-slider");
    const zoomInButton = document.getElementById("zoomInButton");
@@ -462,7 +467,10 @@ function loadAudio(audio, sectionData) {
    chaptersContainer.style.height = "0px";
    editPanel.style.height = "0px";
    chapterButton.addEventListener("click", () => toggleChapters());
-   chapterSearchInput.addEventListener("input", chapterSearchInputChange)
+   chapterSearchInput.addEventListener("input", chapterSearchInputChange);
+   chapterFilterButton.addEventListener("click", chapterFilterButtonClicked);
+   chapterFilterMin.addEventListener("input", chapterFilterChanged);
+   chapterFilterMax.addEventListener("input", chapterFilterChanged);
    zoomOutButton.addEventListener("click", () => { zoomSlider.stepDown(); zoomSlider.dispatchEvent(new Event("input")) });
    zoomInButton.addEventListener("click", () => { zoomSlider.stepUp(); zoomSlider.dispatchEvent(new Event("input")) });
    backButton.addEventListener("click", () => { wavesurfer.skipBackward(); });
@@ -622,6 +630,7 @@ function loadAudio(audio, sectionData) {
             itemType = "chapter";
             if (localStorage.getItem(audioIdentifier) !== null) {
                console.log('-- Loading regions from localStorage --');
+               editsMade = true;
                undoStates = JSON.parse(localStorage.getItem(audioIdentifier)).undoStates;
                undoLevel = JSON.parse(localStorage.getItem(audioIdentifier)).undoLevel;
                primarySet.tempSpeakerObjects = undoStates[undoLevel].state;
@@ -1096,6 +1105,43 @@ function loadAudio(audio, sectionData) {
    function clearChapterSearch() { // clears search filter and updates results
       chapterSearchInput.value = "";
       chapterSearchInput.dispatchEvent(new Event("input"));
+   }
+
+   function chapterFilterButtonClicked(e) { 
+      if (chapterFilterMenu.classList.contains("show")) {
+         chapterFilterMenu.classList.remove("show");
+      } else {
+         chapterFilterMenu.classList.add("show");
+      }
+   }
+
+   /** Shows or hides regions based on their duration */
+   function chapterFilterChanged(e) {
+      document.getElementById("filter-min-label").innerText = ("0" + chapterFilterMin.value).slice(-2);
+      document.getElementById("filter-max-label").innerText = ("0" + chapterFilterMax.value).slice(-2);
+      if (document.getElementById("chapter-alert")) document.getElementById("chapter-alert").remove();
+      let matches = 0;
+      for (const idx in chapters.children) {
+         if (chapters.children[idx].firstChild && chapters.children[idx].classList.contains("chapter") && currSpeakerSet.tempSpeakerObjects[idx]
+            && currSpeakerSet.tempSpeakerObjects[idx].region && currSpeakerSet.tempSpeakerObjects[idx].region.element) {
+            const duration = currSpeakerSet.tempSpeakerObjects[idx].region.end - currSpeakerSet.tempSpeakerObjects[idx].region.start;
+            if (duration < chapterFilterMin.value || duration > chapterFilterMax.value) {
+               chapters.children[idx].style.display = "none";
+               currSpeakerSet.tempSpeakerObjects[idx].region.element.style.display = "none";
+            } else {
+               chapters.children[idx].style.display = "flex";
+               currSpeakerSet.tempSpeakerObjects[idx].region.element.style.display = "";
+               matches++;
+            }
+         }
+      }
+      flashChapters();
+      if (matches == 0) {
+         const msg = document.createElement("span");
+         msg.innerHTML = "No Matches!";
+         msg.id = "chapter-alert";
+         chapters.prepend(msg);
+      }  
    }
 
    function showStartStopConflicts(e, forceRun) { // hides regions that have identical start/stop time
@@ -1685,9 +1731,17 @@ function loadAudio(audio, sectionData) {
                      }
                   }
                   if (headers.length === 3) item['locked'] = false;
+                  if ((item.end - item.start) > longestDuration) {
+                     longestDuration = item.end - item.start;
+                  }
                   speakerSet.speakerObjects.push(item);
                }
             }
+            longestDuration = Math.floor(longestDuration);
+            chapterFilterMax.max = longestDuration;
+            chapterFilterMin.max = longestDuration;
+            chapterFilterMax.value = longestDuration;
+            document.getElementById("filter-max-label").innerText = ("0" + longestDuration).slice(-2);
             speakerSet.tempSpeakerObjects = cloneSpeakerObjectArray(speakerSet.speakerObjects);
             populateChaptersAndRegions(speakerSet); // draw on waveform
             // if (!speakerSet.isSecondary || forcePopulate) populateChaptersAndRegions(speakerSet); // prevents secondary set being drawn on first load
