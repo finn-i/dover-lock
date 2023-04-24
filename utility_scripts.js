@@ -469,8 +469,10 @@ function loadAudio(audio, sectionData) {
    chapterButton.addEventListener("click", () => toggleChapters());
    chapterSearchInput.addEventListener("input", chapterSearchInputChange);
    chapterFilterButton.addEventListener("click", chapterFilterButtonClicked);
-   chapterFilterMin.addEventListener("input", chapterFilterChanged);
-   chapterFilterMax.addEventListener("input", chapterFilterChanged);
+   chapterFilterMin.addEventListener("input", durationFilterChanged);
+   chapterFilterMax.addEventListener("input", durationFilterChanged);
+   chapterFilterMin.style["accent-color"] = accentColour; 
+   chapterFilterMax.style["accent-color"] = accentColour; 
    zoomOutButton.addEventListener("click", () => { zoomSlider.stepDown(); zoomSlider.dispatchEvent(new Event("input")) });
    zoomInButton.addEventListener("click", () => { zoomSlider.stepUp(); zoomSlider.dispatchEvent(new Event("input")) });
    backButton.addEventListener("click", () => { wavesurfer.skipBackward(); });
@@ -1079,7 +1081,7 @@ function loadAudio(audio, sectionData) {
                if (!chapters.children[idx].firstChild.innerText.toLowerCase().includes(e.target.value.toLowerCase())) {
                   chapters.children[idx].style.display = "none";
                   currSpeakerSet.tempSpeakerObjects[idx].region.element.style.display = "none";
-               } else {
+               } else if (getDurationFilterMatches().includes(idx)) {
                   chapters.children[idx].style.display = "flex";
                   currSpeakerSet.tempSpeakerObjects[idx].region.element.style.display = "";
                   matches++;
@@ -1116,9 +1118,9 @@ function loadAudio(audio, sectionData) {
    }
 
    /** Shows or hides regions based on their duration */
-   function chapterFilterChanged(e) {
-      document.getElementById("filter-min-label").innerText = ("0" + chapterFilterMin.value).slice(-2);
-      document.getElementById("filter-max-label").innerText = ("0" + chapterFilterMax.value).slice(-2);
+   function durationFilterChanged(e) {
+      document.getElementById("filter-min-label").innerText = String(chapterFilterMin.value).padStart(2, "0") + "s";
+      document.getElementById("filter-max-label").innerText = String(chapterFilterMax.value).padStart(2, "0") + "s";
       if (document.getElementById("chapter-alert")) document.getElementById("chapter-alert").remove();
       let matches = 0;
       for (const idx in chapters.children) {
@@ -1128,7 +1130,7 @@ function loadAudio(audio, sectionData) {
             if (duration < chapterFilterMin.value || duration > chapterFilterMax.value) {
                chapters.children[idx].style.display = "none";
                currSpeakerSet.tempSpeakerObjects[idx].region.element.style.display = "none";
-            } else {
+            } else if (getSpeakerFilterMatches().includes(idx)){
                chapters.children[idx].style.display = "flex";
                currSpeakerSet.tempSpeakerObjects[idx].region.element.style.display = "";
                matches++;
@@ -1142,6 +1144,35 @@ function loadAudio(audio, sectionData) {
          msg.id = "chapter-alert";
          chapters.prepend(msg);
       }  
+   }
+
+   /** Utility function for duration filter */
+   function getSpeakerFilterMatches() {
+      let out = []
+      for (const idx in chapters.children) {
+         if (chapters.children[idx].firstChild && chapters.children[idx].classList.contains("chapter") && currSpeakerSet.tempSpeakerObjects[idx]
+         && currSpeakerSet.tempSpeakerObjects[idx].region && currSpeakerSet.tempSpeakerObjects[idx].region.element) {
+            if (chapters.children[idx].firstChild.innerText.toLowerCase().includes(chapterSearchInput.value.toLowerCase())) {
+               out.push(idx);
+            }
+         }
+      }
+      return out;
+   }
+   
+   /** Utility function for speaker filter */
+   function getDurationFilterMatches() {
+      let out = [];
+      for (const idx in chapters.children) {
+         if (chapters.children[idx].firstChild && chapters.children[idx].classList.contains("chapter") && currSpeakerSet.tempSpeakerObjects[idx]
+            && currSpeakerSet.tempSpeakerObjects[idx].region && currSpeakerSet.tempSpeakerObjects[idx].region.element) {
+            const duration = currSpeakerSet.tempSpeakerObjects[idx].region.end - currSpeakerSet.tempSpeakerObjects[idx].region.start;
+            if (duration >= chapterFilterMin.value && duration <= chapterFilterMax.value) {
+               out.push(idx);
+            }
+         }
+      }
+      return out;
    }
 
    function showStartStopConflicts(e, forceRun) { // hides regions that have identical start/stop time
@@ -1741,7 +1772,7 @@ function loadAudio(audio, sectionData) {
             chapterFilterMax.max = longestDuration;
             chapterFilterMin.max = longestDuration;
             chapterFilterMax.value = longestDuration;
-            document.getElementById("filter-max-label").innerText = ("0" + longestDuration).slice(-2);
+            document.getElementById("filter-max-label").innerText = String(longestDuration).padStart(2, "0") + "s";
             speakerSet.tempSpeakerObjects = cloneSpeakerObjectArray(speakerSet.speakerObjects);
             populateChaptersAndRegions(speakerSet); // draw on waveform
             // if (!speakerSet.isSecondary || forcePopulate) populateChaptersAndRegions(speakerSet); // prevents secondary set being drawn on first load

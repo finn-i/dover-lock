@@ -2095,6 +2095,7 @@ input::-webkit-inner-spin-button {
 
 #filter-menu input {
 	width: 30%;
+	/* margin-inline: 0.5rem; */
 }
 
 #chapters-container {

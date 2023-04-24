@@ -225,7 +225,7 @@
 						<div id="audio-dropdowns">
 							<div id="chapters-container">
 								<div id="chapter-search-box">
-								 	<input type="text" placeholder="Search.." title="Filter chapters and regions by speaker name" id="chapter-search-input" maxlength="40" />
+								 	<input type="text" title="Filter chapters and regions by speaker name" id="chapter-search-input" maxlength="40" />
 									<img src="interfaces/{$interface_name}/images/bootstrap/funnel.svg" id="funnel-button" />
 								</div>
 								<div id="filter-menu">
