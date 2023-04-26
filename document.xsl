@@ -175,6 +175,7 @@
 							<div class="context-menu-item" id="context-menu-overdub">Overdub Selected Down</div>
 							<div class="context-menu-item" id="context-menu-lock">Lock Selected</div>
 							<div class="context-menu-item" id="context-menu-delete">Delete Selected</div>
+							<div class="context-menu-item" id="context-menu-download">Download Selected</div>
 						</div>
 						<div id="timeline-menu">
 							<div class="timeline-menu-item" id="timeline-menu-hide">Hide Regions <input type="checkbox" /></div>
