@@ -304,6 +304,8 @@ function loadAudio(audio, sectionData) {
    const audioIdentifier = gs.xsltParams.site_name + ":" + gs.cgiParams.c + ":" + gs.cgiParams.d;
    const backgroundColour = "rgb(29, 40, 47)";
    const accentColour = "#66d640";
+   const waveformHeight = 180;
+   const fullscreenWaveformHeight = 220;
    // const accentColour = "#F8C537";
    const regionTransparency = "50";
    
@@ -360,7 +362,7 @@ function loadAudio(audio, sectionData) {
       // barHeight: 1.2,
       // barGap: 5,
       // barRadius: 1,
-      height: 140,
+      height: waveformHeight,
       cursorColor: 'black',
       // maxCanvasWidth: 32000,
       minPxPerSec: 15, // default 20
@@ -937,9 +939,14 @@ function loadAudio(audio, sectionData) {
       }
    }
 
-   // Convert a audio-buffer segment to a Blob using WAVE representation
-   // The returned Object URL can be set directly as a source for an Auido element.
-   // (C) Ken Fyrstenberg / MIT license
+   /**
+      * Convert a audio-buffer segment to a Blob using WAVE representation
+      * The returned Object URL can be set directly as a source for an Auido element.
+      * https://stackoverflow.com/questions/60079764/how-to-export-wavesurfer-js-as-audio-file
+      * @param {int} abuffer Audio buffer
+      * @param {int} offset Start position in bytes
+      * @param {int} len Length of download in bytes
+   */
    function bufferToWave(abuffer, offset, len) {
 
       var numOfChan = abuffer.numberOfChannels,
@@ -1731,7 +1738,7 @@ function loadAudio(audio, sectionData) {
       var newCanvas = document.createElement("div");
       newCanvas.id = "new-canvas";
       newCanvas.style.width = wavesurfer.drawer.canvases[0].wave.width + 'px';
-      newCanvas.style.height = '140px';
+      newCanvas.style.height = waveformHeight + 'px';
       newCanvas.style.backgroundImage = "url('" + image + "')";
       waveformContainer.appendChild(newCanvas); 
    }
@@ -2920,13 +2927,13 @@ function loadAudio(audio, sectionData) {
    function fullscreenChanged() { 
       if (!audioContainer.classList.contains("fullscreen")) {
          audioContainer.classList.add("fullscreen");
-         wavesurfer.setHeight(175); // increase waveform height
+         wavesurfer.setHeight(fullscreenWaveformHeight); // increase waveform height
          caretContainer.style.paddingLeft = "2rem"; 
          caretContainer.style.height = wavesurfer.getHeight() + "px"; // set height to waveform height
          audioContainer.prepend(caretContainer); // attach to audioContainer (otherwise doesn't show due to AC being fullscreen)
       } else  {
          audioContainer.classList.remove("fullscreen");
-         wavesurfer.setHeight(140);
+         wavesurfer.setHeight(waveformHeight);
          caretContainer.style.paddingLeft = "0";
          caretContainer.style.height = wavesurfer.getHeight() + "px";
          audioContainer.parentElement.prepend(caretContainer); // move back up in DOM hierarchy 
