@@ -2084,10 +2084,10 @@ input::-webkit-inner-spin-button {
 	z-index: 21;
 	background: rgb(20, 30, 32);
 	color: white;
-	box-shadow: 1px 1px 15px -5px black;
+	box-shadow: 1px 1px 15px black;
 	border: 1px solid #eee;
 	margin: 2px;
-	padding: 0.2rem;
+	padding: 0.75rem;
 }
 
 #filter-menu.show {

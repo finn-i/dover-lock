@@ -304,22 +304,22 @@ function loadAudio(audio, sectionData) {
    const audioIdentifier = gs.xsltParams.site_name + ":" + gs.cgiParams.c + ":" + gs.cgiParams.d;
    const backgroundColour = "rgb(29, 40, 47)";
    const accentColour = "#66d640";
-   const waveformHeight = 180;
-   const fullscreenWaveformHeight = 220;
    // const accentColour = "#F8C537";
-   const regionTransparency = "50";
+   const waveformHeight = 180; // height of waveform container
+   const fullscreenWaveformHeight = 220; // height of waveform container in fullscreen mode
+   const regionTransparency = "50"; // transparency of wavesurfer regions
    
-   let editMode = false;
-   let currentRegion = {speaker: '', start: '', end: ''};
-   let currentRegions = [];
+   let editMode = false; 
+   let currentRegion = {speaker: '', start: '', end: ''}; // currently selected region
+   let currentRegions = []; // populated with currently selected regions
 
-   let itemType;
-   let longestDuration = 0;
+   let itemType; // type of input item (chapter or word)
+   let longestDuration = 0; // longest region duration, sets max value of filter
 
-   let dualMode = false;
-   let secondaryLoaded = false;
-   let selectedVersions = ['current'];
-   let previousVersionsExist = true;
+   let dualMode = false; // whether user has enabled dual mode
+   let secondaryLoaded = false; // whether user has loaded the secondary set
+   let selectedVersions = ['current']; 
+   let previousVersionsExist = true; // if audio has existing versions
 
    let waveformCursorX = 0;
    let snappedToX = 0;
