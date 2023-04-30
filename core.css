@@ -1927,7 +1927,7 @@ input::-webkit-inner-spin-button {
 #caret-container {
 	position: absolute;
 	/* background-color: #090; */
-	height: 180px; /* match waveform */
+	height: 140px; /* match waveform */
 	width: 20px; /* match gs_content padding */
 	flex-direction: column;
 	justify-content: space-evenly;
@@ -2087,7 +2087,7 @@ input::-webkit-inner-spin-button {
 	box-shadow: 1px 1px 15px black;
 	border: 1px solid #eee;
 	margin: 2px;
-	padding: 0.75rem;
+	padding: 0.5rem;
 }
 
 #filter-menu.show {

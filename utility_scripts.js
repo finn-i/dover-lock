@@ -305,8 +305,8 @@ function loadAudio(audio, sectionData) {
    const backgroundColour = "rgb(29, 40, 47)";
    const accentColour = "#66d640";
    // const accentColour = "#F8C537";
-   const waveformHeight = 180; // height of waveform container
-   const fullscreenWaveformHeight = 220; // height of waveform container in fullscreen mode
+   const waveformHeight = 140; // height of waveform container
+   const fullscreenWaveformHeight = 200; // height of waveform container in fullscreen mode
    const regionTransparency = "50"; // transparency of wavesurfer regions
    
    let editMode = false; 
@@ -535,7 +535,8 @@ function loadAudio(audio, sectionData) {
    });
 
    zoomSlider.addEventListener('input', function() { // slider changes waveform zoom
-      wavesurfer.zoom(Number(this.value) / 4); 
+      const sliderValue = Number(this.value) / 4;
+      wavesurfer.zoom(sliderValue > 1 ? (sliderValue / 4) : 1); // ensure value is greater than 1
       if (currentRegion.speaker && getCurrentRegionIndex() != -1) { 
          setHoverSpeaker(currSpeakerSet.tempSpeakerObjects[getCurrentRegionIndex()].region.element.style.left, currentRegion.speaker);
          drawCurrentRegionBounds();
@@ -2501,11 +2502,12 @@ function loadAudio(audio, sectionData) {
       let isOut = false;
       if (dest == 0) isOut = true;
       zoomInterval = setInterval(() => {
+         const sliderValue = Number(zoomSlider.value) / 4;
          if (isOut) {
-            if (zoomSlider.value != 0) {
+            if (zoomSlider.value != 1) {
                if (zoomSlider.value > 50) zoomSlider.value -= 30; // ramp up for finer adjustments
                else zoomSlider.stepDown(); 
-               wavesurfer.zoom(zoomSlider.value / 4); 
+               wavesurfer.zoom(sliderValue > 1 ? (sliderValue / 4) : 1); // ensure value is greater than 1
             } else {
                clearInterval(zoomInterval);
                isZooming = false;
@@ -2516,7 +2518,7 @@ function loadAudio(audio, sectionData) {
             if (zoomSlider.value / 4 < dest) {
                if (zoomSlider.value > 50) zoomSlider.value += 30; // ramp up for finer adjustments
                else zoomSlider.stepUp(); 
-               wavesurfer.zoom(zoomSlider.value / 4);
+               wavesurfer.zoom(sliderValue > 1 ? (sliderValue / 4) : 1); // ensure value is greater than 1
             } else {
                clearInterval(zoomInterval);
                isZooming = false;
