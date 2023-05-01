@@ -171,15 +171,15 @@
 				</div>
         <div id="audioContainer" tabindex="0">
 						<div id="context-menu">
-							<div class="context-menu-item" id="context-menu-replace">Replace Selected Down</div>
-							<div class="context-menu-item" id="context-menu-overdub">Overdub Selected Down</div>
-							<div class="context-menu-item" id="context-menu-lock">Lock Selected</div>
-							<div class="context-menu-item" id="context-menu-delete">Delete Selected</div>
-							<div class="context-menu-item" id="context-menu-download">Download Selected</div>
+							<div class="context-menu-item" id="context-menu-replace" title="Copy selected region to the opposite set, replacing any overlapping regions">Replace Selected Down</div>
+							<div class="context-menu-item" id="context-menu-overdub" title="Copy selected region to the opposite set, merging any same-speaker regions">Overdub Selected Down</div>
+							<div class="context-menu-item" id="context-menu-lock" title="Lock or unlock selected region, changing the editable state">Lock Selected</div>
+							<div class="context-menu-item" id="context-menu-delete" title="Remove selected region">Delete Selected</div>
+							<div class="context-menu-item" id="context-menu-download" title="Download selected region as WAV">Download Selected</div>
 						</div>
 						<div id="timeline-menu">
-							<div class="timeline-menu-item" id="timeline-menu-hide">Hide Regions <input type="checkbox" /></div>
-							<div class="timeline-menu-item" id="timeline-menu-dualmode">Dual Mode <input type="checkbox" id="dual-mode-checkbox" /></div>
+							<div class="timeline-menu-item" id="timeline-menu-hide" title="Toggle visibility of regions">Hide Regions <input type="checkbox" /></div>
+							<div class="timeline-menu-item" id="timeline-menu-dualmode" title="Toggle dual-view mode">Dual Mode <input type="checkbox" id="dual-mode-checkbox" /></div>
 							<hr></hr>
 							<div class="timeline-menu-subtext">Show Differences</div>
 							<div class="timeline-menu-item disabled" id="timeline-menu-region" title="Show regions with conflicting start/end times">Region:Start/Stop <input type="checkbox" /></div>
@@ -227,7 +227,7 @@
 							<div id="chapters-container">
 								<div id="chapter-search-box">
 								 	<input type="text" title="Filter chapters and regions by speaker name" id="chapter-search-input" maxlength="40" />
-									<img src="interfaces/{$interface_name}/images/bootstrap/funnel.svg" id="funnel-button" />
+									<img src="interfaces/{$interface_name}/images/bootstrap/funnel.svg" title="Toggle filter menu" id="funnel-button" />
 								</div>
 								<div id="filter-menu">
 									Min: <span id="filter-min-label">00</span><input type="range" min="0" max="50" value="0" id="filter-min" title="Set the minimum region length" />

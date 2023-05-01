@@ -931,8 +931,9 @@ function loadAudio(audio, sectionData) {
          const region = currSpeakerSet.tempSpeakerObjects[getCurrentRegionIndex()].region; 
          const sampleRate = wavesurfer.backend.ac.sampleRate;
          const duration = region.end - region.start;
+         const saveName = (gs.documentMetadata.Title + "-[" + region.attributes.label.innerText + "]").replace(" ", "_") ; // e.g. Bella_A-[Jim_Wilson]
          let link = document.createElement("a");
-         link.download = gs.documentMetadata.Audio + "-[" + region.attributes.label.innerText + "]";
+         link.download = saveName;
          link.href = bufferToWave(wavesurfer.backend.buffer, Math.round(region.start * sampleRate), Math.round(duration * sampleRate));
          link.click();
       } else {
@@ -958,21 +959,21 @@ function loadAudio(audio, sectionData) {
          pos = 0;
          
       // write WAVE header
-      setUint32(0x46464952);                         // "RIFF"
-      setUint32(length - 8);                         // file length - 8
-      setUint32(0x45564157);                         // "WAVE"
+      setUint32(0x46464952);                         // ChunkID: "RIFF"
+      setUint32(length - 8);                         // ChunkSize: file length - 8
+      setUint32(0x45564157);                         // Format: "WAVE"
       
-      setUint32(0x20746d66);                         // "fmt " chunk
-      setUint32(16);                                 // length = 16
-      setUint16(1);                                  // PCM (uncompressed)
-      setUint16(numOfChan);
-      setUint32(abuffer.sampleRate);
-      setUint32(abuffer.sampleRate * 2 * numOfChan); // avg. bytes/sec
-      setUint16(numOfChan * 2);                      // block-align
-      setUint16(16);                                 // 16-bit (hardcoded in this demo)
+      setUint32(0x20746d66);                         // SubChunk1ID: "fmt "
+      setUint32(16);                                 // SubChunk1Size: 16
+      setUint16(1);                                  // AudioFormat: PCM (uncompressed)
+      setUint16(numOfChan);                          // NumChannels
+      setUint32(abuffer.sampleRate);                 // SampleRate
+      setUint32(abuffer.sampleRate * 2 * numOfChan); // ByteRate: avg. bytes/sec
+      setUint16(numOfChan * 2);                      // BlockAlign: block-align
+      setUint16(16);                                 // BitsPerSample: 16-bit (hardcoded in this demo)
       
-      setUint32(0x61746164);                         // "data" - chunk
-      setUint32(length - pos - 4);                   // chunk length
+      setUint32(0x61746164);                         // SubChunk2ID: "data" - chunk
+      setUint32(length - pos - 4);                   // SubChunk2Size: chunk length
       
       // write interleaved data
       for(i = 0; i < abuffer.numberOfChannels; i++)
@@ -991,14 +992,14 @@ function loadAudio(audio, sectionData) {
       // create Blob
       return (URL || webkitURL).createObjectURL(new Blob([buffer], {type: "audio/wav"}));
       
-      function setUint16(data) {
-      view.setUint16(pos, data, true);
-      pos += 2;
+      function setUint16(data) { // two bytes
+         view.setUint16(pos, data, true);
+         pos += 2;
       }
       
-      function setUint32(data) {
-      view.setUint32(pos, data, true);
-      pos += 4;
+      function setUint32(data) { // four bytes
+         view.setUint32(pos, data, true);
+         pos += 4;
       }
    }
 
