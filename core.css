@@ -2049,11 +2049,13 @@ input::-webkit-inner-spin-button {
 	height: 10%;
 	display: flex;
 	flex-direction: row;
+	justify-content: right;
 }
 
 #chapter-search-input {
 	width: 90%;
 	height: 100%;
+	margin-right: auto;
 	background: transparent;
 	border: none;
 	outline: none;
@@ -2075,7 +2077,8 @@ input::-webkit-inner-spin-button {
 
 #filter-menu {
 	position: absolute;
-	right: 50%;
+	/* right: 50%; */
+	width: 48%;
 	display: none;
 	flex-direction: row;
 	flex-wrap: nowrap;
@@ -2097,6 +2100,20 @@ input::-webkit-inner-spin-button {
 #filter-menu input {
 	width: 30%;
 	/* margin-inline: 0.5rem; */
+}
+
+#filter-menu span {
+	width: 4em;
+	text-align: right;
+}
+
+#filter-min {
+	margin-right: 1rem;
+}
+
+#filter-count {
+	color: #888;
+	align-self: flex-end;
 }
 
 #chapters-container {

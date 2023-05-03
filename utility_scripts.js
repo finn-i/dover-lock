@@ -535,8 +535,10 @@ function loadAudio(audio, sectionData) {
    });
 
    zoomSlider.addEventListener('input', function() { // slider changes waveform zoom
-      const sliderValue = Number(this.value) / 4;
-      wavesurfer.zoom(sliderValue > 1 ? (sliderValue / 4) : 1); // ensure value is greater than 1
+      let sliderValue = Number(this.value) / 4;
+      if (sliderValue < 1) sliderValue = 1;
+      // sliderValue = sliderValue > 1 ? (sliderValue / 4) : 1; // ensure value is greater than 1
+      wavesurfer.zoom(sliderValue); 
       if (currentRegion.speaker && getCurrentRegionIndex() != -1) { 
          setHoverSpeaker(currSpeakerSet.tempSpeakerObjects[getCurrentRegionIndex()].region.element.style.left, currentRegion.speaker);
          drawCurrentRegionBounds();
@@ -931,7 +933,7 @@ function loadAudio(audio, sectionData) {
          const region = currSpeakerSet.tempSpeakerObjects[getCurrentRegionIndex()].region; 
          const sampleRate = wavesurfer.backend.ac.sampleRate;
          const duration = region.end - region.start;
-         const saveName = (gs.documentMetadata.Title + "-[" + region.attributes.label.innerText + "]").replace(" ", "_") ; // e.g. Bella_A-[Jim_Wilson]
+         const saveName = (gs.documentMetadata.Title + "-[" + region.attributes.label.innerText + "]").replace(/ /g,"_"); // replaces all spaces with "_" : e.g. Bella_A-[Jim_Wilson]
          let link = document.createElement("a");
          link.download = saveName;
          link.href = bufferToWave(wavesurfer.backend.buffer, Math.round(region.start * sampleRate), Math.round(duration * sampleRate));
@@ -976,28 +978,28 @@ function loadAudio(audio, sectionData) {
       setUint32(length - pos - 4);                   // SubChunk2Size: chunk length
       
       // write interleaved data
-      for(i = 0; i < abuffer.numberOfChannels; i++)
+      for (i = 0; i < abuffer.numberOfChannels; i++)
       channels.push(abuffer.getChannelData(i));
       
-      while(pos < length) {
-      for(i = 0; i < numOfChan; i++) {             // interleave channels
-         sample = Math.max(-1, Math.min(1, channels[i][offset])); // clamp
-         sample = (0.5 + sample < 0 ? sample * 32768 : sample * 32767)|0; // scale to 16-bit signed int
-         view.setInt16(pos, sample, true);          // update data chunk
-         pos += 2;
-      }
-      offset++                                     // next source sample
+      while (pos < length) {
+         for (i = 0; i < numOfChan; i++) {           // interleave channels
+            sample = Math.max(-1, Math.min(1, channels[i][offset])); // clamp
+            sample = (0.5 + sample < 0 ? sample * 32768 : sample * 32767)|0; // scale to 16-bit signed int
+            view.setInt16(pos, sample, true);        // update data chunk
+            pos += 2;
+         }
+         offset++                                    // next source sample
       }
    
       // create Blob
       return (URL || webkitURL).createObjectURL(new Blob([buffer], {type: "audio/wav"}));
       
-      function setUint16(data) { // two bytes
+      function setUint16(data) { // write two bytes
          view.setUint16(pos, data, true);
          pos += 2;
       }
       
-      function setUint32(data) { // four bytes
+      function setUint32(data) { // write four bytes
          view.setUint32(pos, data, true);
          pos += 4;
       }
@@ -1178,6 +1180,8 @@ function loadAudio(audio, sectionData) {
             }
          }
          flashChapters();
+         document.getElementById("filter-count").innerText = "x" + matches;
+         if (matches == chapters.children.length || matches == 0) document.getElementById("filter-count").innerText = "";
          if (matches == 0) {
             const msg = document.createElement("span");
             msg.innerHTML = "No Matches!";
@@ -1201,9 +1205,9 @@ function loadAudio(audio, sectionData) {
    }
 
    /** Shows or hides regions based on their duration */
-   function durationFilterChanged(e) {
-      document.getElementById("filter-min-label").innerText = String(chapterFilterMin.value).padStart(2, "0") + "s";
-      document.getElementById("filter-max-label").innerText = String(chapterFilterMax.value).padStart(2, "0") + "s";
+   function durationFilterChanged(e) { 
+      document.getElementById("filter-min-label").innerText = minutize(chapterFilterMin.value, true) + "s";
+      document.getElementById("filter-max-label").innerText = minutize(chapterFilterMax.value, true) + "s";
       if (document.getElementById("chapter-alert")) document.getElementById("chapter-alert").remove();
       let matches = 0;
       for (const idx in chapters.children) {
@@ -1221,6 +1225,8 @@ function loadAudio(audio, sectionData) {
          }
       }
       flashChapters();
+      document.getElementById("filter-count").innerText = "x" + matches;
+      if (matches == chapters.children.length || matches == 0) document.getElementById("filter-count").innerText = "";
       if (matches == 0) {
          const msg = document.createElement("span");
          msg.innerHTML = "No Matches!";
@@ -1613,7 +1619,6 @@ function loadAudio(audio, sectionData) {
             const secondaryCSVURL = gs.variables.metadataServerURL + "?a=get-archives-assocfile&site=" + gs.xsltParams.site_name + "&c=" + gs.collectionMetadata.indexStem + 
                                     "&d=" + gs.documentMetadata.Identifier + "&assocname=structured-audio.csv&dv=nminus-1";
             loadCSVFile(secondaryCSVURL, secondarySet);
-            console.log(secondarySet.tempSpeakerObjects)
             secondaryLoaded = true; // ensure secondarySet doesn't get re-read > once
          }
          document.getElementById("caret-container").style.display = "flex";
@@ -1854,11 +1859,11 @@ function loadAudio(audio, sectionData) {
                   speakerSet.speakerObjects.push(item);
                }
             }
-            longestDuration = Math.floor(longestDuration);
+            longestDuration = Math.ceil(longestDuration);
             chapterFilterMax.max = longestDuration;
             chapterFilterMin.max = longestDuration;
             chapterFilterMax.value = longestDuration;
-            document.getElementById("filter-max-label").innerText = String(longestDuration).padStart(2, "0") + "s";
+            document.getElementById("filter-max-label").innerText = minutize(longestDuration, true) + "s";
             speakerSet.tempSpeakerObjects = cloneSpeakerObjectArray(speakerSet.speakerObjects);
             populateChaptersAndRegions(speakerSet); // draw on waveform
             // if (!speakerSet.isSecondary || forcePopulate) populateChaptersAndRegions(speakerSet); // prevents secondary set being drawn on first load
@@ -2098,10 +2103,12 @@ function loadAudio(audio, sectionData) {
       }
    }
 
-   function minutize(num) { // converts seconds to m:ss for chapters & waveform hover
+   function minutize(num, trimLeadingZeros) { // converts seconds to m:ss for chapters & waveform hover
       let date = new Date(null);
       date.setSeconds(num);
-      return date.toTimeString().split(" ")[0].substring(3);
+      date = date.toTimeString().split(" ")[0].substring(3);
+      if (trimLeadingZeros && date.startsWith("00")) date = date.slice(3);
+      return date;
    }
 
    function formatCursor(num) {
@@ -2607,7 +2614,7 @@ function loadAudio(audio, sectionData) {
    }
 
    function speakerObjToCSVText() { // converts tempSpeakerObjects to csv-like string 
-      console.log(currSpeakerSet.tempSpeakerObjects.map(item => [item.speaker, item.start, item.end, item.locked]).join('\n'));
+      // console.log(currSpeakerSet.tempSpeakerObjects.map(item => [item.speaker, item.start, item.end, item.locked]).join('\n'));
       return currSpeakerSet.tempSpeakerObjects.map(item => [item.speaker, item.start, item.end, item.locked]).join('\n');
    }
 

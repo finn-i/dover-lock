@@ -205,7 +205,7 @@
 							<div class="flex-leftalign toolbar-section">
 								<img src="interfaces/{$interface_name}/images/bootstrap/chapters.svg" id="chapterButton" title="Expand audio chapters" />
 								<img src="interfaces/{$interface_name}/images/bootstrap/zoom-out.svg" id="zoomOutButton" title="Zoom out" />
-								<input type="range" min="1" max="200" value="50" id="zoom-slider" step="10" title="Click and drag to adjust zoom level" />
+								<input type="range" min="0" max="200" value="50" id="zoom-slider" step="10" title="Click and drag to adjust zoom level" />
 								<img src="interfaces/{$interface_name}/images/bootstrap/zoom-in.svg" id="zoomInButton" title="Zoom in" />
 							</div>
 							<div class="flex-centeralign toolbar-section">
@@ -227,11 +227,12 @@
 							<div id="chapters-container">
 								<div id="chapter-search-box">
 								 	<input type="text" title="Filter chapters and regions by speaker name" id="chapter-search-input" maxlength="40" />
+									<span id="filter-count"><text></text></span>
 									<img src="interfaces/{$interface_name}/images/bootstrap/funnel.svg" title="Toggle filter menu" id="funnel-button" />
 								</div>
 								<div id="filter-menu">
-									Min: <span id="filter-min-label">00</span><input type="range" min="0" max="50" value="0" id="filter-min" title="Set the minimum region length" />
-									Max: <span id="filter-max-label">50</span><input type="range" min="0" max="50" value="50" id="filter-max" title="Set the maximum region length" />
+									Min: <span id="filter-min-label">00:00s</span><input type="range" min="0" max="50" value="0" id="filter-min" title="Set the minimum region length" />
+									Max: <span id="filter-max-label">01:00s</span><input type="range" min="0" max="50" value="50" id="filter-max" title="Set the maximum region length" />
 								</div>
 								<div id="chapters"><text></text></div>
 							</div>
