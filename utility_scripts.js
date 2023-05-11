@@ -1840,24 +1840,24 @@ function loadAudio(audio, sectionData) {
 
             if (dataLines[0].split(',').length === 3) headers = ["speaker", "start", "end"]; // assume speaker, start, end
             else if (dataLines[0].split(',').length === 4) headers = ["speaker", "start", "end", "locked"]; // assume speaker, start, end, locked
-            else headers = ["speaker", "start", "end"]; // this should never be reached assuming input file has either 3 or four columns
+            else headers = ["speaker", "start", "end", "locked"]; // this is reached after commit where there are 6 cols: speaker, start, stop, dur_lock, spkr_loc, global_lock
 
             for (let i = startIndex; i < dataLines.length; i++) {
                let data = dataLines[i].split(',');
-               if (data.length == headers.length) {
-                  let item = {};
-                  for (let j = 0; j < headers.length; j++) {
-                     item[headers[j]] = data[j];
-                     if (j == 0 && !speakerSet.uniqueSpeakers.includes(data[j])) {
-                        speakerSet.uniqueSpeakers.push(data[j]);
-                     }
+            // if (data.length == headers.length) {
+               let item = {};
+               for (let j = 0; j < headers.length; j++) {
+                  item[headers[j]] = data[j];
+                  if (j == 0 && !speakerSet.uniqueSpeakers.includes(data[j])) {
+                     speakerSet.uniqueSpeakers.push(data[j]);
                   }
-                  if (headers.length === 3) item['locked'] = false;
-                  if ((item.end - item.start) > longestDuration) {
-                     longestDuration = item.end - item.start;
-                  }
-                  speakerSet.speakerObjects.push(item);
                }
+               if (headers.length === 3) item['locked'] = false;
+               if ((item.end - item.start) > longestDuration) {
+                  longestDuration = item.end - item.start;
+               }
+               speakerSet.speakerObjects.push(item);
+            // }
             }
             longestDuration = Math.ceil(longestDuration);
             chapterFilterMax.max = longestDuration;
@@ -2614,8 +2614,9 @@ function loadAudio(audio, sectionData) {
    }
 
    function speakerObjToCSVText() { // converts tempSpeakerObjects to csv-like string 
-      // console.log(currSpeakerSet.tempSpeakerObjects.map(item => [item.speaker, item.start, item.end, item.locked]).join('\n'));
-      return currSpeakerSet.tempSpeakerObjects.map(item => [item.speaker, item.start, item.end, item.locked]).join('\n');
+      // SPEAKER, START, END, DURATION_LOCK, SPEAKER_LOCK, GLOBAL_LOCK
+      const regex = new RegExp("SPEAKER_\\d{2}");
+      return currSpeakerSet.tempSpeakerObjects.map(item => [item.speaker, item.start, item.end, item.locked || false, !regex.test(item.speaker), !regex.test(item.speaker) || item.locked]).join("\n");
    }
 
    function discardRegionChanges(forceDiscard) { // resets tempSpeakerObjects to speakerObjects
