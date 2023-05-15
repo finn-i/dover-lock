@@ -1,0 +1,57 @@
+#!/usr/bin/gawk -f
+
+  BEGIN {
+    FS=" ";
+    output_file = "overlaps"
+    print "" > output_file
+    count = 0
+  }
+
+  # Loop through the records in the first file
+  FILENAME == ARGV[1] {
+    # print $1 " " $2 " " $3 " " $4 " " $5 " " $6 " " $7 " " $8 " " $9 " " $10 >> output_file;
+    first_file_length = NR;
+    while (getline line < FILENAME > 0) {
+      nf = split(line, fields)
+      if ($1 == "SPEAKER") {
+        # Extract start time and end time
+        start_time[count] = fields[4]
+        duration[count] = fields[5]
+        end_time[count] = start_time[count] + duration[count]
+        locked[count] = fields[10]
+      }
+      count++
+    }
+    # for (i in start_time) print start_time[i] >> output_file
+  }
+
+  # Loop through the records in the second file
+  FILENAME == ARGV[2] {
+    o_count = 0
+    while (getline line < FILENAME > 0) {
+      nf = split(line, fields)
+      if ($1 == "SPEAKER") {
+        # Extract the start time and duration from the second file
+        other_start_time[o_count] = fields[4]
+        other_duration[o_count] = fields[5]
+        other_end_time[o_count] = other_start_time[o_count] + other_duration[o_count]
+        other_locked[o_count] = fields[10]
+        for (k = 0; k < count; k++) {
+          # Check for overlap
+          if (start_time[k] >= other_start_time[o_count] && start_time[k] <= other_end_time[o_count] ||
+              start_time[k] <= other_end_time[o_count] && start_time[k] >= other_start_time[o_count] ||
+              end_time[k] >= other_start_time[o_count] && end_time[k] <= other_end_time[o_count]) {
+            # Print region to overlaps file if the region it overlaps is locked
+            if (locked[k] == 1) print ARGV[2], other_start_time[o_count], other_duration[o_count] >> output_file
+            else if (other_locked[o_count] == 1) print ARGV[1], start_time[k], duration[k] >> output_file
+          }
+        }
+      }
+      o_count++
+    }
+  }
+
+  END {
+    close(output_file)
+  }
+
