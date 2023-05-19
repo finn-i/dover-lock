@@ -8,7 +8,7 @@
 BEGIN {
   FS = " "; # Field separator
   output_file = "overlaps"; 
-  print "" > output_file; # Clear output
+  # print "" > output_file; # Clear output
   count = 0; # Monitors while loop index
 }
 
@@ -18,11 +18,12 @@ FILENAME == ARGV[1] {
   while (getline line < FILENAME > 0) {
     nf = split(line, fields); 
     if ($1 == "SPEAKER") {
-      # Extract start time, end time and lock state
+      # Extract start time, end time and dur_lock state
       start_time[count] = fields[4];
       duration[count] = fields[5];
       end_time[count] = start_time[count] + duration[count];
-      locked[count] = fields[10];
+      speaker[count] = fields[8];
+      dur_locked[count] = fields[10];
     }
     count++;
   }
@@ -34,20 +35,27 @@ FILENAME == ARGV[2] {
   while (getline line < FILENAME > 0) {
     nf = split(line, fields);
     if ($1 == "SPEAKER") {
-      # Extract start time, end time and lock state from the second file
+      # Extract start time, end time and dur_lock state from the second file
       other_start_time[o_count] = fields[4];
       other_duration[o_count] = fields[5];
       other_end_time[o_count] = other_start_time[o_count] + other_duration[o_count];
-      other_locked[o_count] = fields[10];
+      other_speaker[o_count] = fields[8];
+      other_dur_locked[o_count] = fields[10];
       for (k = 0; k < count; k++) {
         # Check for overlap
         if (start_time[k] >= other_start_time[o_count] && start_time[k] <= other_end_time[o_count] ||
             start_time[k] <= other_end_time[o_count] && start_time[k] >= other_start_time[o_count] ||
             end_time[k] >= other_start_time[o_count] && end_time[k] <= other_end_time[o_count]) {
-          # Print region to overlaps file if the region it overlaps is locked
-          if (locked[k] == 1) {
+          # Print region to overlaps file if the region it overlaps is dur_locked
+          if (dur_locked[k] == 1 && other_dur_locked[o_count] == 1) {
+            min_start = (start_time[k] < other_start_time[o_count]) ? start_time[k] : other_start_time[o_count];
+            max_duration = (end_time[k] > other_end_time[o_count]) ? end_time[k]-min_start : other_end_time[o_count]-min_start;
+            print "CONFLICT", ARGV[1], start_time[k], duration[k], 
+                  "conflict:"speaker[k]"/"other_speaker[o_count], min_start, max_duration >> output_file;
             print ARGV[2], other_start_time[o_count], other_duration[o_count] >> output_file;
-          } else if (other_locked[o_count] == 1) {
+          } else if (dur_locked[k] == 1) {
+            print ARGV[2], other_start_time[o_count], other_duration[o_count] >> output_file;
+          } else if (other_dur_locked[o_count] == 1) {
             print ARGV[1], start_time[k], duration[k] >> output_file;
           }
         }
