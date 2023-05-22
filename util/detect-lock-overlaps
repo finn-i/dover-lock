@@ -24,6 +24,7 @@ FILENAME == ARGV[1] {
       end_time[count] = start_time[count] + duration[count];
       speaker[count] = fields[8];
       dur_locked[count] = fields[10];
+      spkr_locked[count] = fields[11];
     }
     count++;
   }
@@ -41,13 +42,14 @@ FILENAME == ARGV[2] {
       other_end_time[o_count] = other_start_time[o_count] + other_duration[o_count];
       other_speaker[o_count] = fields[8];
       other_dur_locked[o_count] = fields[10];
+      other_spkr_locked[o_count] = fields[11];
       for (k = 0; k < count; k++) {
         # Check for overlap
-        if (start_time[k] >= other_start_time[o_count] && start_time[k] <= other_end_time[o_count] ||
-            start_time[k] <= other_end_time[o_count] && start_time[k] >= other_start_time[o_count] ||
-            end_time[k] >= other_start_time[o_count] && end_time[k] <= other_end_time[o_count]) {
+        if (start_time[k] <= other_end_time[o_count] && other_start_time[o_count] <= end_time[k] ||
+            other_start_time[o_count] <= end_time[k] && start_time[k] < other_end_time[o_count]) {
           # Print region to overlaps file if the region it overlaps is dur_locked
-          if (dur_locked[k] == 1 && other_dur_locked[o_count] == 1) {
+          if (dur_locked[k] == 1 && other_dur_locked[o_count] == 1 || 
+              spkr_locked[k] == 1 && other_spkr_locked[o_count] == 1) {
             min_start = (start_time[k] < other_start_time[o_count]) ? start_time[k] : other_start_time[o_count];
             max_duration = (end_time[k] > other_end_time[o_count]) ? end_time[k]-min_start : other_end_time[o_count]-min_start;
             print "CONFLICT", ARGV[1], start_time[k], duration[k], 
@@ -57,6 +59,11 @@ FILENAME == ARGV[2] {
             print ARGV[2], other_start_time[o_count], other_duration[o_count] >> output_file;
           } else if (other_dur_locked[o_count] == 1) {
             print ARGV[1], start_time[k], duration[k] >> output_file;
+          }
+          if (spkr_locked[k] == 1 && other_spkr_locked[o_count] == 0) {
+            print "RENAME", ARGV[2], other_start_time[o_count], other_duration[o_count], speaker[k] >> output_file;
+          } else if (other_spkr_locked[o_count] == 1 && spkr_locked[k] == 0) {
+            print "RENAME", ARGV[1], start_time[k], duration[k], other_speaker[o_count] >> output_file;
           }
         }
       }
