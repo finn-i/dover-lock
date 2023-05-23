@@ -280,6 +280,24 @@ cat $mapped_rttms |
 
 total_weight=$(gawk '{ sum += $1 } END { print sum }' <$mapped_rttms) 
 
+#
+# Find all unique speaker names for renaming output names (sysx:speaker_a -> SPEAKER_A) 
+#
+
+output_unique="unique-speakers"
+unique_speakers=""
+
+while IFS=" " read -r weight rttm_file; do
+	current_speakers=$(awk '{ if ($1 == "SPEAKER") print $8}' "$rttm_file" | sort -u)
+	unique_speakers="$unique_speakers $current_speakers"
+done < "$input_rttms"
+
+>"$output_unique"
+printf "%s\n" "$unique_speakers" | tr ' ' '\n' | sort -u >> "$output_unique"
+
+#
+# DOVER's speaker voting
+#
+
 $bindir/dover-speaker-voting debug=1 total="$total_weight" split_ties=$split_ties $tmpdir/collated 2>$tmpdir/collated.votes
 # FINN: dover-speaker-voting(1, total_wt, )
-
