@@ -14,18 +14,24 @@
 			split_ties = 0;
 
 			noutputs = 0;
+
+			unique_speakers = "DOVER/unique-speakers"
 		}
 
 		function rename_to_orig(input) {
-			while (getline line < "unique-speakers" > 0) {
+			while (getline line < unique_speakers > 0) {
 				spkr_stripped = input;
 				gsub(/sys[0-9]:/, "", spkr_stripped);
 				gsub(tolower(line), line, spkr_stripped);
 				input = spkr_stripped;
 			}
-			close("unique-speakers");
+			close(unique_speakers);
 			return input;
 		}
+
+		# function restore_locks() {
+			
+		# }
 
 		function output_all(meeting, channel) {
 			last_speaker = "";

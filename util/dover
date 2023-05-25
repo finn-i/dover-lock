@@ -18,6 +18,8 @@ MDE_SCORER=$bindir/md-eval.pl
 MDE_FLAGS="-nafc -c 0 -o"
 
 tmpdir=DOVER
+rm -rf $tmpdir/rttms/* # FINN
+rm -rf $tmpdir/maps/* # FINN
 wavname=
 
 split_ties=0
@@ -200,7 +202,8 @@ mkdir -p $tmpdir/rttms $tmpdir/maps
 
 >$mapped_rttms
 
-echo "" > "overlaps"; # Clear output
+
+>"$tmpdir/overlaps"; # Clear output
 
 cat -n $input_rttms | # FINN: input.rttm.list
 	while read idx weight input_rttm; do # FINN: for each input rttm
@@ -229,14 +232,22 @@ cat -n $input_rttms | # FINN: input.rttm.list
 			mapped_rttm=$tmpdir/rttms/mapped$idx.rttm 
 			# FINN: mapped[x].rttm = map_rttm_speakers(map[x], sys[x].rttm)
 			map_rttm_speakers $tmpdir/maps/map$idx $relabeled_rttm >$mapped_rttm 
-			# FINN: Generate file 'overlaps.txt' containing all overlapping regions
-			$bindir/detect-lock-overlaps $mapped_rttm $tmpdir/rttms/sys1.rttm
-			if [ $idx = 2 ]; then
-				$bindir/detect-lock-overlaps $mapped_rttm $tmpdir/rttms/mapped$(expr $idx + 1).rttm;
-			fi
 
 			echo "$weight $mapped_rttm" >>$mapped_rttms # FINN: mapped.rttm.list
 		fi
+	done
+
+# FINN: Generate file 'overlaps.txt' containing all overlapping regions
+# FINN: detect_lock_overlaps $idx -> function: while i != idx, run through pairings up until i-1, inc i
+overlap_start_idx=1
+cat -n $mapped_rttms | # -n numbers all output lines [idx]
+	while read idx1 weight rttm1; do
+		cat -n $mapped_rttms | 
+			while read idx2 weight rttm2; do
+				if [ $idx1 -lt $idx2 ]; then
+					$bindir/detect-lock-overlaps $rttm1 $rttm2
+				fi
+			done
 	done
 
 #
@@ -245,14 +256,13 @@ cat -n $input_rttms | # FINN: input.rttm.list
 
 cat $mapped_rttms |
 	while read weight rttm; do
-		gawk -v weight=$weight \
+		gawk -v weight=$weight -v outfile="$tmpdir/overlaps" \
 			'{ 
-				# print "***\t", $4, $5, $8 >> output_file
 				overlapsWithLock = 0;
 				durationConflict = 0;
 				assertRename = 0;
 
-				while (getline line < "overlaps" > 0) {
+				while (getline line < outfile > 0) {
 					nf = split(line, fields)
 					if (fields[1] == "CONFLICT" && FILENAME == fields[2] && $4 == fields[3] && $5 == fields[4]) { # FINN: Duration conflict encountered
 						durationConflict = line; # FINN: Duration conflict match, set rename var
@@ -262,7 +272,7 @@ cat $mapped_rttms |
 						overlapsWithLock = 1; # FINN: if record exists in overlaps, flag for removal
 					}
 				}
-				close("overlaps"); # FINN: Crucial - otherwise overlaps is only read once
+				close(outfile); # FINN: Crucial - otherwise overlaps is only read once
 				if (durationConflict != 0) {
 					nf = split(durationConflict, union_fields)
 					print $2, $3, union_fields[6], "1-START", union_fields[5], weight;
@@ -284,7 +294,7 @@ total_weight=$(gawk '{ sum += $1 } END { print sum }' <$mapped_rttms)
 # Find all unique speaker names for renaming output names (sysx:speaker_a -> SPEAKER_A) 
 #
 
-output_unique="unique-speakers"
+output_unique="$tmpdir/unique-speakers"
 unique_speakers=""
 
 while IFS=" " read -r weight rttm_file; do
@@ -292,8 +302,8 @@ while IFS=" " read -r weight rttm_file; do
 	unique_speakers="$unique_speakers $current_speakers"
 done < "$input_rttms"
 
->"$output_unique"
-printf "%s\n" "$unique_speakers" | tr ' ' '\n' | sort -u >> "$output_unique"
+>$output_unique
+printf "%s\n" "$unique_speakers" | tr ' ' '\n' | sort -u >> $output_unique
 
 #
 # DOVER's speaker voting
@@ -301,3 +311,4 @@ printf "%s\n" "$unique_speakers" | tr ' ' '\n' | sort -u >> "$output_unique"
 
 $bindir/dover-speaker-voting debug=1 total="$total_weight" split_ties=$split_ties $tmpdir/collated 2>$tmpdir/collated.votes
 # FINN: dover-speaker-voting(1, total_wt, )
+
