@@ -237,9 +237,7 @@ cat -n $input_rttms | # FINN: input.rttm.list
 		fi
 	done
 
-# FINN: Generate file 'overlaps.txt' containing all overlapping regions
-# FINN: detect_lock_overlaps $idx -> function: while i != idx, run through pairings up until i-1, inc i
-overlap_start_idx=1
+# FINN: Generate file 'overlaps' containing all overlapping regions
 cat -n $mapped_rttms | # -n numbers all output lines [idx]
 	while read idx1 weight rttm1; do
 		cat -n $mapped_rttms | 
@@ -251,7 +249,8 @@ cat -n $mapped_rttms | # -n numbers all output lines [idx]
 	done
 
 #
-# Collate all rttms and combine speaker hypotheses
+# Collate all rttms and combine speaker hypotheses. 
+# Adapted to alter output based on flags in file 'overlaps'.
 #
 
 cat $mapped_rttms |
@@ -291,7 +290,7 @@ cat $mapped_rttms |
 total_weight=$(gawk '{ sum += $1 } END { print sum }' <$mapped_rttms) 
 
 #
-# Find all unique speaker names for renaming output names (sysx:speaker_a -> SPEAKER_A) 
+# Find all unique speaker names for renaming output names in dover-speaker-voting
 #
 
 output_unique="$tmpdir/unique-speakers"
@@ -310,5 +309,3 @@ printf "%s\n" "$unique_speakers" | tr ' ' '\n' | sort -u >> $output_unique
 #
 
 $bindir/dover-speaker-voting debug=1 total="$total_weight" split_ties=$split_ties $tmpdir/collated 2>$tmpdir/collated.votes
-# FINN: dover-speaker-voting(1, total_wt, )
-

@@ -9,7 +9,6 @@ BEGIN {
   FS = " "; # Field separator
   output_file = "DOVER/overlaps"; 
   count = 0; # Monitors while loop index
-  # print "detecting overlaps in: ", ARGV[1], " and ", ARGV[2] >> output_file;
 }
 
 # Loop through the records in the first file
@@ -45,14 +44,18 @@ FILENAME == ARGV[2] {
       other_spkr_locked[o_count] = fields[11];
       for (k = 0; k < count; k++) {
         # Check for overlap
-        if (start_time[k] <= other_end_time[o_count] && other_start_time[o_count] <= end_time[k] ||
-            other_start_time[o_count] <= end_time[k] && start_time[k] < other_end_time[o_count]) {
-          if (dur_locked[k] == 1 && other_dur_locked[o_count] == 1 || 
-              spkr_locked[k] == 1 && other_spkr_locked[o_count] == 1) { # both duration lock OR both speaker lock
+        regions_overlap = (start_time[k] <= other_end_time[o_count] && other_start_time[o_count] <= end_time[k] ||
+                          other_start_time[o_count] <= end_time[k] && start_time[k] < other_end_time[o_count]);
+        if (regions_overlap) {
+          both_dur_locked = (dur_locked[k] == 1 && other_dur_locked[o_count] == 1); # Both regions are duration locked
+          both_spkr_locked = (spkr_locked[k] == 1 && other_spkr_locked[o_count] == 1); # Both regions are speaker locked
+          if (both_dur_locked || both_spkr_locked) { 
+            # Get smallest start value and highest end value
             min_start = (start_time[k] < other_start_time[o_count]) ? start_time[k] : other_start_time[o_count]; 
             max_duration = (end_time[k] > other_end_time[o_count]) ? end_time[k]-min_start : other_end_time[o_count]-min_start;
-            if (spkr_locked[k] == 1 && other_spkr_locked[o_count] == 1) { # both speaker locked
-              if (dur_locked[k] == 1 && other_dur_locked[o_count] == 0) { # ensures duration lock has start/stop priority
+            # Ensures duration lock has start/stop time priority
+            if (both_spkr_locked) { 
+              if (dur_locked[k] == 1 && other_dur_locked[o_count] == 0) { 
                 min_start = start_time[k];
                 max_duration = duration[k];
               } else if (dur_locked[k] == 0 && other_dur_locked[o_count] == 1) {
@@ -60,16 +63,17 @@ FILENAME == ARGV[2] {
                 max_duration = other_duration[o_count];
               }
             }
-            # flag conflict: region to change followed by updated start/stop times and speaker name
+            # Conflict flag: region to change followed by updated region props
             print "CONFLICT", ARGV[1], start_time[k], duration[k], 
                   "conflict:"speaker[k]"/"other_speaker[o_count], min_start, max_duration >> output_file;
-            print ARGV[2], other_start_time[o_count], other_duration[o_count] >> output_file; # remove extra region (has been merged)
-          } else if (dur_locked[k] == 1) { # flag overlapping region for removal
+            print ARGV[2], other_start_time[o_count], other_duration[o_count] >> output_file; # Remove extra region (has been merged)
+          } else if (dur_locked[k] == 1) { # Flag overlapping region for removal
             print ARGV[2], other_start_time[o_count], other_duration[o_count] >> output_file;
-          } else if (other_dur_locked[o_count] == 1) { # flag overlapping region for removal
+          } else if (other_dur_locked[o_count] == 1) { # Flag overlapping region for removal
             print ARGV[1], start_time[k], duration[k] >> output_file;
           }
-          if (spkr_locked[k] == 1 && other_spkr_locked[o_count] == 0) { # 
+          # Flag regions for rename, ensures speaker priority
+          if (spkr_locked[k] == 1 && other_spkr_locked[o_count] == 0) { 
             print "RENAME", ARGV[2], other_start_time[o_count], other_duration[o_count], speaker[k] >> output_file;
           } else if (other_spkr_locked[o_count] == 1 && spkr_locked[k] == 0) {
             print "RENAME", ARGV[1], start_time[k], duration[k], other_speaker[o_count] >> output_file;
