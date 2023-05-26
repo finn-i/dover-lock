@@ -1045,6 +1045,15 @@ function loadAudio(audio, sectionData) {
       return lockedImg;
    }
 
+   /** Draws conflict marker image at given parent element */
+   function drawConflictMarker(parent) {
+      let conflictImg = document.createElement("img");
+      conflictImg.classList.add("region-conflict");
+      conflictImg.src = interface_bootstrap_images + "exclamation.svg";
+      conflictImg.title = "This region has conflicts and should be revised.";
+      parent.prepend(conflictImg); 
+   }
+
    /**
     * Draws triple dot menu button and attaches click listener
     * @param {object} region Region to attach menu button to
@@ -1944,11 +1953,17 @@ function loadAudio(audio, sectionData) {
             ...(selected) && {color: "rgba(255,50,50,0.5)"},
          });
          data.tempSpeakerObjects[i].region = associatedReg;
-         if (selected && data.tempSpeakerObjects[i].locked) { // add padlock to regions if they are selected and locked
-            let lock = drawPadlock(associatedReg.element);
-            attachPadlockListener(lock, associatedReg, false);
+
+         if (editMode && data.tempSpeakerObjects[i].speaker.includes("conflict")) {
+            drawConflictMarker(associatedReg.element);
          }
-         if (selected) drawRegionMenuButton(associatedReg);
+         if (selected) {
+            drawRegionMenuButton(associatedReg);
+            if (data.tempSpeakerObjects[i].locked) { // add padlock to regions if they are selected and locked
+               let lock = drawPadlock(associatedReg.element);
+               attachPadlockListener(lock, associatedReg, false);
+            }
+         }
       }
       if (waveformSpinner.style.display == 'block') $(".wavesurfer-region").fadeOut(100); // keep regions hidden until wavesurfer.load() has finished
       let handles = document.getElementsByTagName('handle');
@@ -2070,10 +2085,15 @@ function loadAudio(audio, sectionData) {
       } else {
          region.update({ color: "rgba(255, 255, 255, 0.3)" });
       }
-      if (editMode && currSpeakerSet.tempSpeakerObjects[getIndexOfRegion(region)] && currSpeakerSet.tempSpeakerObjects[getIndexOfRegion(region)].locked 
-         && region.element.getElementsByClassName("region-padlock").length == 0) { // hovered region is locked
-         let lock = drawPadlock(region.element);
-         attachPadlockListener(lock, region, false);
+      const currRegion = currSpeakerSet.tempSpeakerObjects[getIndexOfRegion(region)];
+      if (editMode && currRegion) {
+         if (currRegion.locked && region.element.getElementsByClassName("region-padlock").length == 0) { // hovered region is locked
+            let lock = drawPadlock(region.element);
+            attachPadlockListener(lock, region, false);
+         }
+         if (currRegion.speaker.includes("conflict") && region.element.getElementsByClassName("region-conflict").length == 0) {
+            drawConflictMarker(region.element);
+         }
       }
    }
 
@@ -2093,7 +2113,7 @@ function loadAudio(audio, sectionData) {
          }
          if (region.element.getElementsByTagName("img").length > 0 && !isCurrentRegion(region) && !isInCurrentRegions(region)) {
             for (let child of Array.from(region.element.children)) {
-               if (child.tagName == "IMG") {
+               if (child.tagName == "IMG" && !child.classList.contains("region-conflict")) {
                   child.remove();
                }
             }
@@ -2445,6 +2465,12 @@ function loadAudio(audio, sectionData) {
             editsMade = true;
             addUndoState(primarySet, secondarySet, currSpeakerSet.isSecondary, dualMode, "speaker-change", getCurrentRegionIndex(), getCurrentRegionsIndexes());
             editLockedRegion(currSpeakerSet.tempSpeakerObjects[getCurrentRegionIndex()]);
+            let regElement = currSpeakerSet.tempSpeakerObjects[getCurrentRegionIndex()].region.element;
+            if (regElement.getElementsByClassName("region-conflict").length > 0 && !newSpeaker.includes("conflict")) {
+               regElement.getElementsByClassName("region-conflict")[0].remove();
+            } else if (regElement.getElementsByClassName("region-conflict").length == 0 && newSpeaker.includes("conflict")) {
+               drawConflictMarker(regElement);
+            }
          } else { console.log("no region selected") }
       } else { console.log("no text in speaker input"); speakerInput.style.outline = "2px solid firebrick"; }
    }

@@ -169,6 +169,18 @@
 					<img src="interfaces/{$interface_name}/images/bootstrap/caret-right-fill.svg" title="Change selected set" id="primary-caret" />
 					<img src="interfaces/{$interface_name}/images/bootstrap/caret-right.svg" title="Change selected set" id="secondary-caret" />
 				</div>
+				<div id="timeline-menu">
+					<div class="timeline-menu-item" id="timeline-menu-hide" title="Toggle visibility of regions">Hide Regions <input type="checkbox" /></div>
+					<div class="timeline-menu-item" id="timeline-menu-dualmode" title="Toggle dual-view mode">Dual Mode <input type="checkbox" id="dual-mode-checkbox" /></div>
+					<hr></hr>
+					<div class="timeline-menu-subtext">Show Differences</div>
+					<div class="timeline-menu-item disabled" id="timeline-menu-region" title="Show regions with conflicting start/end times">Region:Start/Stop <input type="checkbox" /></div>
+					<div class="timeline-menu-item disabled" id="timeline-menu-speaker" title="Show regions with identical start/end times but conflicting speaker label">Speaker Label <input type="checkbox" /></div>
+					<hr></hr>
+					<div class="timeline-menu-subtext">Show Differences</div>
+					<div class="timeline-menu-item disabled">Merge Tracks </div>
+					<div class="timeline-menu-item disabled">Revert Merge </div>
+				</div>
         <div id="audioContainer" tabindex="0">
 						<div id="context-menu">
 							<div class="context-menu-item" id="context-menu-replace" title="Copy selected region to the opposite set, replacing any overlapping regions">Replace Selected Down</div>
@@ -177,14 +189,7 @@
 							<div class="context-menu-item" id="context-menu-delete" title="Remove selected region">Delete Selected</div>
 							<div class="context-menu-item" id="context-menu-download" title="Download selected region as WAV">Download Selected</div>
 						</div>
-						<div id="timeline-menu">
-							<div class="timeline-menu-item" id="timeline-menu-hide" title="Toggle visibility of regions">Hide Regions <input type="checkbox" /></div>
-							<div class="timeline-menu-item" id="timeline-menu-dualmode" title="Toggle dual-view mode">Dual Mode <input type="checkbox" id="dual-mode-checkbox" /></div>
-							<hr></hr>
-							<div class="timeline-menu-subtext">Show Differences</div>
-							<div class="timeline-menu-item disabled" id="timeline-menu-region" title="Show regions with conflicting start/end times">Region:Start/Stop <input type="checkbox" /></div>
-							<div class="timeline-menu-item disabled" id="timeline-menu-speaker" title="Show regions with identical start/end times but conflicting speaker label">Speaker Label <input type="checkbox" /></div>
-						</div>
+						
             <div id="hover-speaker"><xsl:text> </xsl:text></div>
 						<div id="version-select-menu"><xsl:text> </xsl:text></div>
             <div id="waveform">

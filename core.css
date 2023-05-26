@@ -1896,6 +1896,16 @@ input::-webkit-inner-spin-button {
 	/* pointer-events: none; */
 }
 
+.region-conflict {
+	position: absolute;
+	right: 0;
+	width: 1rem !important;
+	height: 1rem;
+	padding-top: 0.2rem;
+	padding-right: 0.4rem;
+	pointer-events: none;
+}
+
 .region-menu {
 	position: absolute;
 	left: 0;
