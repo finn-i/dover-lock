@@ -59,7 +59,7 @@ function restore_lock_state(start, duration, speaker) {
 			close(fields[2]);
 		}
 		close(input_rttms);
-	}
+	} 
 	if (duration_lock) out_string = out_string " 1";
 	else out_string = out_string " 0";
 	if (speaker_lock) out_string = out_string " 1";
@@ -67,6 +67,36 @@ function restore_lock_state(start, duration, speaker) {
 	if (duration_lock || speaker_lock) out_string = out_string " 1";
 	else out_string = out_string " 0";
 	return out_string;
+}
+
+#
+#	Prepends 'dur_lock' and/or 'spkr_lock' to speaker name of output regions depending on state
+#
+
+function restore_lock_type(start, duration, speaker) {
+	output_name = "";
+	if (speaker ~ "conflict") {
+		while (getline line < input_rttms > 0) {
+			split(line, fields); 
+			while (getline line2 < fields[2] > 0) {
+				split(line2, fields2); 
+				# FINN: conflict includes input speaker + overlaps
+				if (speaker ~ fields2[8] && 
+				(start <= fields2[4]+fields2[5] && fields2[4] <= start+duration ||
+				fields2[4] <= start+duration && start < fields2[4]+fields2[5])) {
+					if (fields2[10] == 1 && output_name !~ "dur_lock") {
+						output_name = output_name "dur_lock:";
+					}
+					if (fields2[11] == 1 && output_name !~ "spkr_lock") {
+						output_name = output_name "spkr_lock:";
+					}
+				}
+			}
+			close(fields[2]);
+		}
+		close(input_rttms);
+	}
+	return output_name;
 }
 
 function output_all(meeting, channel) {
@@ -117,21 +147,23 @@ function output_all(meeting, channel) {
 
 			for (i = 1; i <= n_ties; i++) {
 				p[i] = rename_to_orig(p[i]);
+				name_prefix = restore_lock_type(output_start[k] + (i - 1) * duration, duration, p[i]);
 				lock_suffix = restore_lock_state(output_start[k] + (i - 1) * duration, duration, p[i]);
 				printf "SPEAKER %s %s %f %f <NA> <NA> %s <NA>%s\n", \
 					meeting, channel, \
 					output_start[k] + (i - 1) * duration, duration, \
-					p[i], lock_suffix;
+					name_prefix p[i], lock_suffix;
 
 			}
 			last_speaker = p[n_ties];
 		} else {
 			output_speaker[k] = rename_to_orig(output_speaker[k]);
+			name_prefix = restore_lock_type(output_start[k], output_duration[k], output_speaker[k]);
 			lock_suffix = restore_lock_state(output_start[k], output_duration[k], output_speaker[k]);
 			printf "SPEAKER %s %s %f %f <NA> <NA> %s <NA>%s\n", \
 				meeting, channel, \
 				output_start[k], output_duration[k], \
-				output_speaker[k], lock_suffix;
+				name_prefix output_speaker[k], lock_suffix;
 
 			last_speaker = output_speaker[k];
 		}
