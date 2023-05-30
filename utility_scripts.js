@@ -664,7 +664,7 @@ function loadAudio(audio, sectionData) {
                dualModeChanged(true, "true");
                setTimeout(()=>{
                   dualModeChanged(true, "false");
-               }, 150)
+               }, 150);
             }
          } else if (inputFile.endsWith("json")) { // transcription if json
             itemType = "word";
@@ -717,20 +717,57 @@ function loadAudio(audio, sectionData) {
                         [...versionSelectMenu.children].sort((a,b) => a.innerText>b.innerText?1:-1).forEach(n=>versionSelectMenu.appendChild(n)); // sort alphabetically
                      }
                   }, (error) => { console.log("get-archives-metadata error:"); console.log(error); });
+                  $.ajax({ // get conflict status of each version 
+                     type: "GET",
+                     url: getCSVURLFromVersion(version),
+                     dataType: "text",
+                  }).then(csvData => {
+                     setTimeout(()=>{ // timeout is needed for some reason ?? TODO
+                        if (version === "current") checkCSVForConflict("current", "", primarySet.tempSpeakerObjects);
+                        else checkCSVForConflict(version, csvData);
+                     }, 100)
+                  }, (error) => { console.log("get-archives-metadata error:"); console.log(error); });
                }
             }
          }, (error) => { console.log("get-fldv-info error:"); console.log(error); });
          initialLoad = false;
       }
       // fixes blank waveform/regions when loading Current -> Prev.1 -> Prev.2
-      // zoomSlider.value = 60;
-      // console.log(zoomSlider.value);
-      // zoomSlider.dispatchEvent(new Event("input"));
       wavesurfer.zoom((zoomSlider.value + 4) / 4);
       wavesurfer.zoom((zoomSlider.value) / 4);
-
       hideAudioLoader();
    });
+
+   function checkCSVForConflict(version, csvData, spkrObj) {  
+      let hasConflict = false;
+      if (csvData !== "") {
+         let dataLines = csvData.split(/\r\n|\n/);
+         for (const line of dataLines) {
+            const speaker = line.split(",")[0];
+            if (speaker.includes("conflict")) {
+               hasConflict = true;
+               break;
+            }
+         }
+      } else {
+         for (const entry of spkrObj) {
+            if (entry.speaker.includes("conflict")) {
+               hasConflict = true;
+               break;
+            }
+         }
+      }
+      // console.log(document.getElementById(version))
+      if (hasConflict && document.getElementById(version).children.length === 0) {
+         let img = document.createElement("img");
+         img.className = "version-has-conflict";
+         img.src = interface_bootstrap_images + "exclamation-red.svg";
+         document.getElementById(version).append(img);
+      }
+      if (!hasConflict && document.getElementById(version).children.length === 1) {
+         document.getElementById(version).getElementsByClassName("version-has-conflict")[0].remove();
+      }
+   }
 
    /**
    * Draws string above waveform at the provided offset
@@ -738,7 +775,26 @@ function loadAudio(audio, sectionData) {
    * @param {string} name String to be drawn
    */
    function setHoverSpeaker(offset, name) {
-      hoverSpeaker.innerHTML = name;  
+      let html = document.createElement("span");
+      if (name.includes("dur_lock:")) {
+         let img = document.createElement("img");
+         img.className = "conflict-hover-icon";
+         img.src = interface_bootstrap_images + "clock.svg";
+         img.title = "This region represents a start/stop time conflict";
+         html.prepend(img);
+      }
+      if (name.includes("spkr_lock:")) {
+         let img = document.createElement("img");
+         img.className = "conflict-hover-icon";
+         img.src = interface_bootstrap_images + "person.svg";
+         img.title = "This region represents a speaker name conflict";
+         html.prepend(img);
+      }
+      name = name.replace("spkr_lock:", "");
+      name = name.replace("dur_lock:", "");
+      hoverSpeaker.innerHTML = "";
+      hoverSpeaker.prepend(html);
+      hoverSpeaker.append(name);
       let newOffset = parseInt(offset.slice(0, -2)) - wave.scrollLeft;
       hoverSpeaker.style.marginLeft = newOffset + "px";
    }
@@ -1533,11 +1589,13 @@ function loadAudio(audio, sectionData) {
          contextMenu.style.top = e.clientY + "px";
 
          let lockConflict = false;
+         let selectionContainsConflict = false;
          if (currentRegions.length > 1) {
             let firstIsLocked = 0;
             for (const reg of currentRegions) {
                if (firstIsLocked === 0) firstIsLocked = reg.locked;
                else if (firstIsLocked != reg.locked) lockConflict = true;
+               if (reg.speaker.includes("conflict")) selectionContainsConflict = true;
             }
          }
          if (lockConflict) {
@@ -1576,6 +1634,9 @@ function loadAudio(audio, sectionData) {
             contextLock.classList.remove('disabled');
             contextDelete.classList.remove('disabled');
             if (currentRegions.length === 0) contextDownload.classList.remove('disabled');
+         }
+         if (selectionContainsConflict) { // TODO: needs work
+            contextLock.classList.add('disabled');
          }
          if (dualMode) { // manipulate context texts
             const actionDirection = currSpeakerSet.isSecondary ? "Up" : "Down";
@@ -1877,6 +1938,7 @@ function loadAudio(audio, sectionData) {
             populateChaptersAndRegions(speakerSet); // draw on waveform
             // if (!speakerSet.isSecondary || forcePopulate) populateChaptersAndRegions(speakerSet); // prevents secondary set being drawn on first load
             resetUndoStates(); // undo stack init
+            checkCSVForConflict(selectedVersions[speakerSet.isSecondary ? 1 : 0], data); 
          }
       }, (error) => { console.log("loadCSVFile Error:"); console.log(error); });
    }
@@ -2471,6 +2533,7 @@ function loadAudio(audio, sectionData) {
             } else if (regElement.getElementsByClassName("region-conflict").length == 0 && newSpeaker.includes("conflict")) {
                drawConflictMarker(regElement);
             }
+            checkCSVForConflict(selectedVersions[currSpeakerSet.isSecondary ? 1 : 0], "", currSpeakerSet.tempSpeakerObjects);
          } else { console.log("no region selected") }
       } else { console.log("no text in speaker input"); speakerInput.style.outline = "2px solid firebrick"; }
    }

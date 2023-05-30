@@ -177,7 +177,7 @@
 					<div class="timeline-menu-item disabled" id="timeline-menu-region" title="Show regions with conflicting start/end times">Region:Start/Stop <input type="checkbox" /></div>
 					<div class="timeline-menu-item disabled" id="timeline-menu-speaker" title="Show regions with identical start/end times but conflicting speaker label">Speaker Label <input type="checkbox" /></div>
 					<hr></hr>
-					<div class="timeline-menu-subtext">Show Differences</div>
+					<div class="timeline-menu-subtext">Conflict Resolution</div>
 					<div class="timeline-menu-item disabled">Merge Tracks </div>
 					<div class="timeline-menu-item disabled">Revert Merge </div>
 				</div>
