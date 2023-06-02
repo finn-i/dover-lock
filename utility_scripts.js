@@ -725,7 +725,7 @@ function loadAudio(audio, sectionData) {
                      setTimeout(()=>{ // timeout is needed for some reason ?? TODO
                         if (version === "current") checkCSVForConflict("current", "", primarySet.tempSpeakerObjects);
                         else checkCSVForConflict(version, csvData);
-                     }, 100)
+                     }, 1000)
                   }, (error) => { console.log("get-archives-metadata error:"); console.log(error); });
                }
             }
@@ -1582,7 +1582,6 @@ function loadAudio(audio, sectionData) {
                break;
             }
          }
-         // console.log(clickedRegion)
          contextMenu.classList.add("visible");
          if (e.clientX + 200 > $(window).width()) contextMenu.style.left = ($(window).width() - 220) + "px"; // ensure menu doesn't clip on right
          else contextMenu.style.left = e.clientX + "px";
@@ -1914,20 +1913,20 @@ function loadAudio(audio, sectionData) {
 
             for (let i = startIndex; i < dataLines.length; i++) {
                let data = dataLines[i].split(',');
-            // if (data.length == headers.length) {
-               let item = {};
-               for (let j = 0; j < headers.length; j++) {
-                  item[headers[j]] = data[j];
-                  if (j == 0 && !speakerSet.uniqueSpeakers.includes(data[j])) {
-                     speakerSet.uniqueSpeakers.push(data[j]);
+               if (data[0] !== "") {
+                  let item = {};
+                  for (let j = 0; j < headers.length; j++) {
+                     item[headers[j]] = data[j];
+                     if (j == 0 && !speakerSet.uniqueSpeakers.includes(data[j])) {
+                        speakerSet.uniqueSpeakers.push(data[j]);
+                     }
                   }
+                  if (headers.length === 3) item['locked'] = false;
+                  if ((item.end - item.start) > longestDuration) {
+                     longestDuration = item.end - item.start;
+                  }
+                  speakerSet.speakerObjects.push(item);
                }
-               if (headers.length === 3) item['locked'] = false;
-               if ((item.end - item.start) > longestDuration) {
-                  longestDuration = item.end - item.start;
-               }
-               speakerSet.speakerObjects.push(item);
-            // }
             }
             longestDuration = Math.ceil(longestDuration);
             chapterFilterMax.max = longestDuration;

@@ -255,13 +255,13 @@ cat -n $mapped_rttms | # -n numbers all output lines [idx]
 
 cat $mapped_rttms |
 	while read weight rttm; do
-		gawk -v weight=$weight -v outfile="$tmpdir/overlaps" \
+		gawk -v weight=$weight -v infile="$tmpdir/overlaps" \
 			'{ 
 				overlapsWithLock = 0;
 				durationConflict = 0;
 				assertRename = 0;
 
-				while (getline line < outfile > 0) {
+				while (getline line < infile > 0) {
 					nf = split(line, fields)
 					if (fields[1] == "CONFLICT" && FILENAME == fields[2] && $4 == fields[3] && $5 == fields[4]) { # FINN: Duration conflict encountered
 						durationConflict = line; # FINN: Duration conflict match, set rename var
@@ -271,7 +271,7 @@ cat $mapped_rttms |
 						overlapsWithLock = 1; # FINN: if record exists in overlaps, flag for removal
 					}
 				}
-				close(outfile); # FINN: Crucial - otherwise overlaps is only read once
+				close(infile); # FINN: Crucial - otherwise overlaps is only read once
 				if (durationConflict != 0) {
 					nf = split(durationConflict, union_fields)
 					print $2, $3, union_fields[6], "1-START", union_fields[5], weight;
