@@ -255,7 +255,7 @@
 									</div>
 									<div class="flex-row selected-header" >
 										Speaker:&#160;&#160;&#160;&#160;
-										<input type="text" id="speaker-input" required="true" maxlength="40" />
+										<input type="text" id="speaker-input" required="true" maxlength="60" />
 										<div>
 											<input type="checkbox" id="change-all-checkbox" value="all" name="change-speaker" title="Select all speakers with the same name" />
 											<label id="change-all-label" for="change-all-checkbox">Select all</label>

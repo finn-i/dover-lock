@@ -808,6 +808,7 @@ function loadAudio(audio, sectionData) {
          wavesurfer.play(region.start); // plays from start of region
       } else { // select or deselect current region
          if (!region.element) return;
+         chapterSearchInput.value = "";
          if (region.element.classList.contains("region-top")) {
             currSpeakerSet = primarySet;
             swapCarets(true);
@@ -1189,6 +1190,7 @@ function loadAudio(audio, sectionData) {
          }
          if (document.getElementById("context-menu-lock-2")) document.getElementById("context-menu-lock-2").remove();
       }
+      updateChapterConflictIcons();
       addUndoState(primarySet, secondarySet, currSpeakerSet.isSecondary, dualMode, "lockChange", getCurrentRegionIndex());
    }
 
@@ -1253,6 +1255,7 @@ function loadAudio(audio, sectionData) {
             msg.id = "chapter-alert";
             chapters.prepend(msg);
          }  
+         updateChapterConflictIcons();
       }
    }
 
@@ -2046,6 +2049,7 @@ function loadAudio(audio, sectionData) {
       else for (const reg of regions) reg.style.setProperty("z-index", "1", "important");
 
       chapterSearchInput.dispatchEvent(new Event("input"));
+      updateChapterConflictIcons();
    }
 
    function loadJSONFile(filename) {
@@ -2365,6 +2369,7 @@ function loadAudio(audio, sectionData) {
          disableStartEndInputs();
       }
       if (currentRegion && currentRegion.speaker != "") {
+         console.log("abc:" + currentRegion.speaker)
          speakerInput.value = currentRegion.speaker;
          setInputInSeconds(startTimeInput, currentRegion.start);
          setInputInSeconds(endTimeInput, currentRegion.end);
@@ -2532,9 +2537,34 @@ function loadAudio(audio, sectionData) {
             } else if (regElement.getElementsByClassName("region-conflict").length == 0 && newSpeaker.includes("conflict")) {
                drawConflictMarker(regElement);
             }
+            updateChapterConflictIcons();
             checkCSVForConflict(selectedVersions[currSpeakerSet.isSecondary ? 1 : 0], "", currSpeakerSet.tempSpeakerObjects);
          } else { console.log("no region selected") }
       } else { console.log("no text in speaker input"); speakerInput.style.outline = "2px solid firebrick"; }
+   }
+
+   function updateChapterConflictIcons() { // llllllll 
+      if (false) {
+         document.querySelectorAll('.conflict-hover-icon').forEach(e => e.remove());
+         for (const chap of chapters.childNodes) {
+            const speakerName = chap.getElementsByClassName("speakerName")[0].innerText;
+            if (speakerName.includes("dur_lock:")) {
+               let img = document.createElement("img");
+               img.className = "conflict-hover-icon";
+               img.src = interface_bootstrap_images + "clock.svg";
+               img.title = "This region represents a start/stop time conflict";
+               chap.insertBefore(img, chap.childNodes[2]);
+            }
+            if (speakerName.includes("spkr_lock:")) {
+               let img = document.createElement("img");
+               img.className = "conflict-hover-icon";
+               img.src = interface_bootstrap_images + "person.svg";
+               img.title = "This region represents a speaker name conflict";
+               chap.insertBefore(img, chap.childNodes[2]);
+            }
+            // chap.getElementsByClassName("speakerName")[0].innerText = speakerName.replace("dur_lock:", "").replace("spkr_lock:", "");
+         }
+      }
    }
 
    function speakerInputUnfocused() {
