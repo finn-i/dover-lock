@@ -64,9 +64,18 @@ FILENAME == ARGV[2] {
               }
             }
             # Conflict flag: region to change followed by updated region props
-            print "CONFLICT", ARGV[1], start_time[k], duration[k], 
-                  "conflict:"speaker[k]"/"other_speaker[o_count], min_start, max_duration >> output_file;
-            print ARGV[2], other_start_time[o_count], other_duration[o_count] >> output_file; # Remove extra region (has been merged)
+            first_spkr = speaker[k];
+            second_spkr = other_speaker[o_count];
+            gsub(/sys[0-9]:/, "", first_spkr);
+            gsub(/sys[0-9]:/, "", second_spkr);
+            if (first_spkr == second_spkr) { # If speaker names match, ensure NAME/NAME becomes NAME
+              print "CONFLICT", ARGV[1], start_time[k], duration[k], 
+                "conflict:"speaker[k], min_start, max_duration >> output_file;
+            } else {
+              print "CONFLICT", ARGV[1], start_time[k], duration[k], 
+                "conflict:"speaker[k]"/"other_speaker[o_count], min_start, max_duration >> output_file;
+              print ARGV[2], other_start_time[o_count], other_duration[o_count] >> output_file; # Remove extra region (has been merged)
+            }
           } else if (dur_locked[k] == 1) { # Flag overlapping region for removal
             print ARGV[2], other_start_time[o_count], other_duration[o_count] >> output_file;
           } else if (other_dur_locked[o_count] == 1) { # Flag overlapping region for removal
