@@ -637,7 +637,7 @@ function loadAudio(audio, sectionData) {
       if (initialLoad) {
          if (inputFile.endsWith("csv")) { // diarization if csv
             itemType = "chapter";
-            if (localStorage.getItem(audioIdentifier) !== null) {
+            if (localStorage.getItem(audioIdentifier) !== null) { // localStorage save exists
                console.log('-- Loading regions from localStorage --');
                editsMade = true;
                undoStates = JSON.parse(localStorage.getItem(audioIdentifier)).undoStates;
@@ -738,6 +738,12 @@ function loadAudio(audio, sectionData) {
       hideAudioLoader();
    });
 
+   /**
+    * Draws conflict icon next to versions containing conflicts
+    * @param {String} version Audio version
+    * @param {String} csvData CSV data of given version
+    * @param {*} spkrObj If CSV data is not given, speakerObjects are instead checked
+    */
    function checkCSVForConflict(version, csvData, spkrObj) {  
       let hasConflict = false;
       if (csvData !== "") {
@@ -757,14 +763,13 @@ function loadAudio(audio, sectionData) {
             }
          }
       }
-      // console.log(document.getElementById(version))
-      if (hasConflict && document.getElementById(version).children.length === 0) {
+      if (hasConflict && document.getElementById(version).children.length === 0) { // draw icon if conflict was found
          let img = document.createElement("img");
          img.className = "version-has-conflict";
          img.src = interface_bootstrap_images + "exclamation-red.svg";
          document.getElementById(version).append(img);
       }
-      if (!hasConflict && document.getElementById(version).children.length === 1) {
+      if (!hasConflict && document.getElementById(version).children.length === 1) { // ensure icon is removed if conflict wasn't found
          document.getElementById(version).getElementsByClassName("version-has-conflict")[0].remove();
       }
    }
@@ -775,25 +780,27 @@ function loadAudio(audio, sectionData) {
    * @param {string} name String to be drawn
    */
    function setHoverSpeaker(offset, name) {
-      let html = document.createElement("span");
+      // replaces 'dur_lock' with clock icon and 'spkr_lock' with person icon to indicate conflict types
+      let icons = document.createElement("span");
       if (name.includes("dur_lock:")) {
          let img = document.createElement("img");
          img.className = "conflict-hover-icon";
          img.src = interface_bootstrap_images + "clock.svg";
          img.title = "This region represents a start/stop time conflict";
-         html.prepend(img);
+         icons.prepend(img);
       }
       if (name.includes("spkr_lock:")) {
          let img = document.createElement("img");
          img.className = "conflict-hover-icon";
          img.src = interface_bootstrap_images + "person.svg";
          img.title = "This region represents a speaker name conflict";
-         html.prepend(img);
+         icons.prepend(img);
       }
+      // remove strings from hover string
       name = name.replace("spkr_lock:", "");
       name = name.replace("dur_lock:", "");
       hoverSpeaker.innerHTML = "";
-      hoverSpeaker.prepend(html);
+      hoverSpeaker.prepend(icons);
       hoverSpeaker.append(name);
       let newOffset = parseInt(offset.slice(0, -2)) - wave.scrollLeft;
       hoverSpeaker.style.marginLeft = newOffset + "px";
@@ -2018,10 +2025,10 @@ function loadAudio(audio, sectionData) {
          });
          data.tempSpeakerObjects[i].region = associatedReg;
 
-         if (editMode && data.tempSpeakerObjects[i].speaker.includes("conflict")) {
-            drawConflictMarker(associatedReg.element);
+         if (editMode && data.tempSpeakerObjects[i].speaker.includes("conflict")) { 
+            drawConflictMarker(associatedReg.element); // draw conflict icon on region
          }
-         if (selected) {
+         if (selected) { // show padlock and menu button if region is selected
             drawRegionMenuButton(associatedReg);
             if (data.tempSpeakerObjects[i].locked) { // add padlock to regions if they are selected and locked
                let lock = drawPadlock(associatedReg.element);
@@ -2353,7 +2360,7 @@ function loadAudio(audio, sectionData) {
          removeButton.classList.remove("disabled");
          speakerInput.classList.remove("disabled");
          changeAllCheckbox.classList.remove("disabled");
-         if (!isZooming) changeAllCheckbox.disabled = false; 
+         if (!isZooming) { changeAllCheckbox.disabled = false; }
          enableStartEndInputs();
          speakerInput.readOnly = false;
       }
@@ -2369,7 +2376,6 @@ function loadAudio(audio, sectionData) {
          disableStartEndInputs();
       }
       if (currentRegion && currentRegion.speaker != "") {
-         console.log("abc:" + currentRegion.speaker)
          speakerInput.value = currentRegion.speaker;
          setInputInSeconds(startTimeInput, currentRegion.start);
          setInputInSeconds(endTimeInput, currentRegion.end);
@@ -2543,7 +2549,7 @@ function loadAudio(audio, sectionData) {
       } else { console.log("no text in speaker input"); speakerInput.style.outline = "2px solid firebrick"; }
    }
 
-   function updateChapterConflictIcons() { // llllllll 
+   function updateChapterConflictIcons() { // disabled: chapter names referenced in too many places to easily replace text with icons
       if (false) {
          document.querySelectorAll('.conflict-hover-icon').forEach(e => e.remove());
          for (const chap of chapters.childNodes) {
@@ -2630,7 +2636,7 @@ function loadAudio(audio, sectionData) {
       zoomInterval = setInterval(() => {
          const sliderValue = Number(zoomSlider.value) / 4;
          if (isOut) {
-            if (zoomSlider.value != 1) {
+            if (zoomSlider.value > 1) {
                if (zoomSlider.value > 50) zoomSlider.value -= 30; // ramp up for finer adjustments
                else zoomSlider.stepDown(); 
                wavesurfer.zoom(sliderValue > 1 ? (sliderValue / 4) : 1); // ensure value is greater than 1
