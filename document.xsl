@@ -151,10 +151,10 @@
 
 		<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"><xsl:text> </xsl:text></script>
 		<script type="text/javascript" src="https://code.jquery.com/ui/1.13.2/jquery-ui.js"><xsl:text> </xsl:text></script>
-		<script type="text/javascript" src="https://unpkg.com/wavesurfer.js@6.6.0/dist/wavesurfer.js"><xsl:text> </xsl:text></script>
-		<script type="text/javascript" src="https://unpkg.com/wavesurfer.js@6.6.0/dist/plugin/wavesurfer.regions.min.js"><xsl:text> </xsl:text></script>
-		<script type="text/javascript" src="https://unpkg.com/wavesurfer.js@6.6.0/dist/plugin/wavesurfer.timeline.min.js"><xsl:text> </xsl:text></script>
-		<script type="text/javascript" src="https://unpkg.com/wavesurfer.js@6.6.0/dist/plugin/wavesurfer.cursor.min.js"><xsl:text> </xsl:text></script>
+		<script type="text/javascript" src="https://unpkg.com/wavesurfer.js@6.6.4/dist/wavesurfer.js"><xsl:text> </xsl:text></script>
+		<script type="text/javascript" src="https://unpkg.com/wavesurfer.js@6.6.4/dist/plugin/wavesurfer.regions.min.js"><xsl:text> </xsl:text></script>
+		<script type="text/javascript" src="https://unpkg.com/wavesurfer.js@6.6.4/dist/plugin/wavesurfer.timeline.min.js"><xsl:text> </xsl:text></script>
+		<script type="text/javascript" src="https://unpkg.com/wavesurfer.js@6.6.4/dist/plugin/wavesurfer.cursor.min.js"><xsl:text> </xsl:text></script>
 		<script type="text/javascript" src="https://d3js.org/colorbrewer.v1.min.js"><xsl:text> </xsl:text></script>
 				<div id="save-popup-bg"><xsl:text> </xsl:text></div>
 				<div id="save-popup">
