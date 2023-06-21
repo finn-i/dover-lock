@@ -368,7 +368,7 @@ function loadAudio(audio, sectionData) {
       minPxPerSec: 15, // default 20
       fillParent: false,
       partialRender: true, // use the PeakCache to improve rendering speed of large waveforms
-      pixelRatio: 1, // 1 results in faster rendering
+      // pixelRatio: 1, // 1 results in faster rendering
       scrollParent: true,
       plugins: [
          WaveSurfer.regions.create({
@@ -1080,8 +1080,9 @@ function loadAudio(audio, sectionData) {
          // arrow.style.paddingTop = '0';
          arrow.style.display = 'inline';
       });
+      // console.log(e.target.classList)
       if (editMode && e.target.tagName !== "INPUT" && e.target.tagName !== "IMG" && !e.target.classList.contains("ui-button") && !$("#audio-dropdowns").has($(e.target)).length
-         && !e.target.classList.contains("context-menu-item")) {
+         && !e.target.classList.contains("context-menu-item") && !e.target.classList.contains("ui-menu-item-wrapper")) {
          let currReg = getCurrentRegionIndex() != -1 ? currSpeakerSet.tempSpeakerObjects[getCurrentRegionIndex()].region : false; // save for deselection
          let currRegs = getCurrentRegionsIndexes().length > 1 ? currentRegions : false; // save for deselection
          removeCurrentRegion();
@@ -1233,6 +1234,7 @@ function loadAudio(audio, sectionData) {
       if (e.isTrusted) { // triggered from user action
          if (document.getElementById("chapter-alert")) document.getElementById("chapter-alert").remove();
          let matches = 0;
+         reloadChapterList(); // fixes search bug -> space showing up in chapter speaker name
          for (const idx in chapters.children) {
             if (chapters.children[idx].firstChild && chapters.children[idx].classList.contains("chapter") && currSpeakerSet.tempSpeakerObjects[idx]
                && currSpeakerSet.tempSpeakerObjects[idx].region && currSpeakerSet.tempSpeakerObjects[idx].region.element) {
@@ -2785,6 +2787,17 @@ function loadAudio(audio, sectionData) {
          uniqueSelectedSpeakers.sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
          speakerInput.value = uniqueSelectedSpeakers.join(", ");
       }
+      let autocompleteOptions = currSpeakerSet.uniqueSpeakers;
+      autocompleteOptions.pop();
+      autocompleteOptions.sort();
+      $("#speaker-input").autocomplete({
+         source: autocompleteOptions,
+         minLength: 2,
+         close: (event, ui) => {
+            // updates speaker name on autocomplete dropdown close
+            speakerChange();
+         }
+      });
    }
 
    /**
