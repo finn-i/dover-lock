@@ -1727,15 +1727,20 @@ wave {
 	flex-grow: 1;
 }
 
-#edit-panel button {
-	padding: 0.5rem;
-	/* border: 1px solid white; */
-	cursor: pointer;
-	background-color: #F8C537;
-	transition: 0.1s ease-in-out;
+.audio-player-button {
 	font-size: 15px;
+	color: white;
+	padding: 0.5rem;
+	cursor: pointer;
+	background-color: rgb(var(--audio-accent-colour));
+	border: 1px solid rgba(var(--audio-accent-colour), 0.5);
+	/* transition: 0.05s ease-in-out; */
 	font-family: 'Courier New', monospace;
 	font-weight: normal;
+}
+
+.audio-player-button:hover {
+	background-color: rgba(var(--audio-accent-colour), 0.75);
 }
 
 #edit-panel h3 {
@@ -1743,9 +1748,6 @@ wave {
 	margin: 0;
 }
 
-#edit-panel button:hover {
-	background-color: #af8b26;
-}
 
 .flex-row {
 	display: flex;
@@ -2168,7 +2170,7 @@ input::-webkit-inner-spin-button {
 	inset: 0; /* top, bottom, left, right shorthand */
   margin: auto; /* center horizontally and vertically */
   border: 5px solid white; 
-  border-top: 5px solid var(--audio-accent-colour);
+  border-top: 5px solid rgb(var(--audio-accent-colour));
   border-radius: 50%;
 	background-color: var(--audio-bg-colour);
   width: 3rem;
@@ -2304,8 +2306,10 @@ input::-webkit-inner-spin-button {
 }
 
 :root { /* css vars */
-	--audio-accent-colour: #66d640;
+	/* --audio-accent-colour: #66d640; */
 	/* --audio-bg-colour: rgb(40, 54, 58); */
 	/* --audio-bg-colour: rgb(29, 43, 47); */
+	--audio-accent-colour: 69, 158, 0; /* to use: rgb[a](var(--audio-accent-colour)) */
+	--audio-accent-colour-dim: #317000;
 	--audio-bg-colour: rgb(29, 40, 47);
 }

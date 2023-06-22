@@ -303,7 +303,7 @@ function loadAudio(audio, sectionData) {
    const GSSTATUS_SUCCESS = 11; // more information on codes found in: GSStatus.java
    const audioIdentifier = gs.xsltParams.site_name + ":" + gs.cgiParams.c + ":" + gs.cgiParams.d;
    const backgroundColour = "rgb(29, 40, 47)";
-   const accentColour = "#66d640";
+   const accentColour = "rgb(69, 158, 0)";
    // const accentColour = "#F8C537";
    const waveformHeight = 140; // height of waveform container
    const fullscreenWaveformHeight = 200; // height of waveform container in fullscreen mode

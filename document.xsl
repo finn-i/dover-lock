@@ -161,8 +161,8 @@
 					<span>Commit changes:</span> 
 					<textarea id="commit-message" placeholder="Commit message" rows="2"><xsl:text> </xsl:text></textarea>
 					<div class="flex-centeralign">
-						<button class="ui-button" id="save-popup-cancel">Cancel</button>
-						<button class="ui-button" id="save-popup-commit">Commit</button>
+						<button class="audio-player-button" id="save-popup-cancel">Cancel</button>
+						<button class="audio-player-button" id="save-popup-commit">Commit</button>
 					</div>
 				</div>
 				<div id="caret-container">
@@ -242,12 +242,12 @@
 								<div id="chapters"><text></text></div>
 							</div>
 							<div id="edit-panel">
-								<button class="ui-button" id="create-button" title="Create a new region on the waveform">Create New Region</button>
+								<button class="audio-player-button" id="create-button" title="Create a new region on the waveform">Create New Region</button>
 								<div class="flex-row" id="save-discard">
-									<button class="ui-button" id="discard-button" title="Discard changes made to regions">Discard Changes</button>
+									<button class="audio-player-button" id="discard-button" title="Discard changes made to regions">Discard Changes</button>
 									<img class="disabled" src="interfaces/{$interface_name}/images/bootstrap/undo.svg" id="undo-button" title="Undo changes made to regions" />
 									<img class="disabled" src="interfaces/{$interface_name}/images/bootstrap/redo.svg" id="redo-button" title="Redo changes made to regions" />
-									<button class="ui-button" id="save-button" title="Save changes made to regions">Save Changes</button>
+									<button class="audio-player-button" id="save-button" title="Save changes made to regions">Save Changes</button>
 								</div>
 								<div>
 									<div class="flex-row selected-header">
@@ -282,7 +282,7 @@
 											<input class="time-label" type="text" value="ss" readonly="true" disabled="true" />
 										</div>
 								</div>
-								<button class="ui-button" id="remove-button" title="Remove the selected region">Remove Selected Region</button>
+								<button class="audio-player-button" id="remove-button" title="Remove the selected region">Remove Selected Region</button>
 							</div>
 						</div>
         </div>		
