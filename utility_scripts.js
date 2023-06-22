@@ -733,6 +733,7 @@ function loadAudio(audio, sectionData) {
          initialLoad = false;
       }
       // fixes blank waveform/regions when loading Current -> Prev.1 -> Prev.2
+      // **** workaround to avoid getting low-res peaks being drawn 
       wavesurfer.zoom((zoomSlider.value + 4) / 4);
       wavesurfer.zoom((zoomSlider.value) / 4);
       hideAudioLoader();
@@ -2590,10 +2591,11 @@ function loadAudio(audio, sectionData) {
    */
    function selectAllCheckboxChanged(skipUndoState) { // "Change all" toggled
       if (changeAllCheckbox.checked) {
-         if (!isZooming) {
-            tempZoomSave = zoomSlider.value;
-            zoomTo(0); // zoom out to encompass all selected regions
-         }
+         // **** Have decided to suppress auto zoom out on select all
+         // if (!isZooming) {
+         //    tempZoomSave = zoomSlider.value;
+         //    zoomTo(1); // zoom out to encompass all selected regions
+         // }
          let uniqueSelectedSpeakers;
          if (currentRegions && currentRegions.length > 0) { // if more than one region selected
             uniqueSelectedSpeakers = [... new Set(currentRegions.map(a => a.speaker))]; // gets unique speakers in currentRegions
@@ -2607,9 +2609,10 @@ function loadAudio(audio, sectionData) {
             }
          }
       } else {
-         if (!isZooming) {
-            zoomTo(tempZoomSave / 4);  // zoom back in to previous level
-         }
+         // **** Have decided to suppress auto zoom out on select all
+         // if (!isZooming) {
+         //    zoomTo(tempZoomSave / 4);  // zoom back in to previous level
+         // }
          currentRegions = []; // this will lose track of previously selected region*s*
       }
       reloadRegionsAndChapters();
@@ -2890,10 +2893,8 @@ function loadAudio(audio, sectionData) {
          item.state = cloneSpeakerObjectArray(item.state);
          item.secState = cloneSpeakerObjectArray(item.secState);
       } 
-      // localStorage.setItem('undoStates', JSON.stringify(undoStates)); // update localStorage items
-      // localStorage.setItem('undoLevel', undoLevel);
       localStorage.setItem(audioIdentifier, JSON.stringify({ "undoStates": undoStates, "undoLevel": undoLevel }));
-;   }
+   }
 
    /**
     * Returns to the previous state in the undo state list

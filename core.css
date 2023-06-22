@@ -1484,12 +1484,6 @@ width:100%
 	pointer-events: none !important;
 }
 
-@supports (-moz-appearance:none) {
-	.audio-scroll {
-		/* scroll-behavior: smooth; */
-	}
-}
-
 .audio-scroll::-webkit-scrollbar {
   height: 6px;
 }
@@ -2103,7 +2097,6 @@ input::-webkit-inner-spin-button {
 
 #filter-menu {
 	position: absolute;
-	/* right: 50%; */
 	width: 48%;
 	display: none;
 	flex-direction: row;
@@ -2125,7 +2118,6 @@ input::-webkit-inner-spin-button {
 
 #filter-menu input {
 	width: 30%;
-	/* margin-inline: 0.5rem; */
 }
 
 #filter-menu span {
