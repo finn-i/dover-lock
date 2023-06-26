@@ -108,39 +108,27 @@ function output_all(meeting, channel) {
 		if (split_ties && n_ties > 1) { 
 			duration = output_duration[k] / n_ties; # FINN: splits duration into equal parts 
 
-			if (debug) print "splitting speaker labels "
-			output_speaker[k] > "/dev/stderr";
+			if (debug) print "splitting speaker labels " output_speaker[k] > "/dev/stderr";
 
 			# try to join reoccurring labels
 			for (j = 2; j <= n_ties; j++) {
-				#
-				print "DEBUG1 "
-				j " "
-				last_speaker " "
-				p[j] > "/dev/stderr";
+				# print "DEBUG1 " j " " last_speaker " " p[j] > "/dev/stderr";
 				if (p[j] == last_speaker) {
 					p[j] = p[1];
 					p[1] = last_speaker;
-					if (debug) print "reordering previous speaker label "
-					last_speaker > "/dev/stderr";
+					if (debug) print "reordering previous speaker label " last_speaker > "/dev/stderr";
 					break;
 				}
 			}
 			for (j = 1; j < n_ties; j++) {
-				#
-				print "DEBUG2 "
-				j " "
-				output_speaker[k + 1]
-				" "
-				p[j] > "/dev/stderr";
+				# print "DEBUG2 " j " " output_speaker[k + 1] " " p[j] > "/dev/stderr";
 				if (index(output_speaker[k + 1], p[j])) {
 					# p[j] is contained in the following speaker label 
 					# reorder it to allow later reording within following label
 					old_p_j = p[j];
 					p[j] = p[n_ties];
 					p[n_ties] = old_p_j;
-					if (debug) print "reordering following speaker label "
-					old_p_j > "/dev/stderr";
+					if (debug) print "reordering following speaker label " old_p_j > "/dev/stderr";
 					break
 				}
 			}
@@ -153,7 +141,6 @@ function output_all(meeting, channel) {
 					meeting, channel, \
 					output_start[k] + (i - 1) * duration, duration, \
 					name_prefix p[i], lock_suffix;
-
 			}
 			last_speaker = p[n_ties];
 		} else {
@@ -164,7 +151,6 @@ function output_all(meeting, channel) {
 				meeting, channel, \
 				output_start[k], output_duration[k], \
 				name_prefix output_speaker[k], lock_suffix;
-
 			last_speaker = output_speaker[k];
 		}
 	}
@@ -180,7 +166,7 @@ function output_all(meeting, channel) {
 
 	time = $3;
 	speaker = $5;
-	# make sure speaker labels dont have = in them(used below)
+	# make sure speaker labels dont have = in them (used below)
 	gsub("=", "Eq", speaker);
 
 	if (NF >= 6) { # FINN: NF - number of fields
@@ -196,8 +182,12 @@ function output_all(meeting, channel) {
 		posterior[speaker] += weight; # FINN: +1
 	}
 
+	# print "-----" > "finn.temp.out"
+	# print "speaker: ", speaker > "finn.temp.out"
+	# print "posterior[speaker]: ", posterior[speaker] > "finn.temp.out"
+
 	total_posterior = 0; # FINN: T(l) := 0 for all labels l // tallies by label
-	max_posterior = 0; # FINN: both posterior[x], total and max are always zero if weights not set / 1?
+	max_posterior = 0; 
 	max_speaker = ""; # FINN: l∗ := ∅ // best label 
 
 	if (debug) { 
@@ -206,20 +196,21 @@ function output_all(meeting, channel) {
 	for (s in posterior) { 
 		total_posterior += posterior[s]; # FINN: total weight tally
 		if (split_ties && posterior[s] == max_posterior) {
-			max_speaker = max_speaker "="
-			s;
+			max_speaker = max_speaker "=" s;
 		} else if (posterior[s] > max_posterior) {
 			max_posterior = posterior[s];
 			max_speaker = s;
 		}
-		if (debug && posterior[s] > 0)
+		if (debug && posterior[s] > 0) {
 			printf " %s %g", s, posterior[s] > "/dev/stderr"
+		}
 	}
 
-	## P(speech) < 0.5 end the speaker segment #
-	# if (total_posterior < total / 2) { # FINN: [0 < 0.5] if T(l∗) ≥ 1/2w : // this implies P (speech) ≥ P (nonspeech)
-	# 	max_speaker = ""; 
-	# }
+	## P(speech) < 0.5 end the speaker segment 
+	# FINN: If omitted, algorithm tends to output union of regions (minVal to maxVal)
+	if (total_posterior < total / 2) { # FINN: [0 < 0.5] if T(l∗) ≥ 1/2w : // this implies P (speech) ≥ P (nonspeech)
+		max_speaker = ""; 
+	}
 	if (debug) {
 		printf " max: %s\n", max_speaker > "/dev/stderr"
 	}

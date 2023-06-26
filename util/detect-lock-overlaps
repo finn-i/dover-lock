@@ -78,8 +78,10 @@ FILENAME == ARGV[2] {
             }
           } else if (dur_locked[k] == 1) { # Flag overlapping region for removal
             print ARGV[2], other_start_time[o_count], other_duration[o_count] >> output_file;
+            print "DUR_LOCKED", ARGV[1], start_time[k], duration[k], speaker[k] >> output_file; # TODO: ensure entry doesn't already exist
           } else if (other_dur_locked[o_count] == 1) { # Flag overlapping region for removal
             print ARGV[1], start_time[k], duration[k] >> output_file;
+            print "DUR_LOCKED", ARGV[2], other_start_time[k], other_duration[k], other_speaker[k] >> output_file;
           }
           # Flag regions for rename, ensures speaker priority
           if (spkr_locked[k] == 1 && other_spkr_locked[o_count] == 0) { 
