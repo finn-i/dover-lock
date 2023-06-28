@@ -252,10 +252,10 @@ cat -n $mapped_rttms | # -n numbers all output lines [idx]
 # Collate all rttms and combine speaker hypotheses. 
 # Adapted to alter output based on flags in file 'overlaps'.
 #
-
+incount=$(wc -l "$input_rttms")
 cat $mapped_rttms |
 	while read weight rttm; do
-		gawk -v weight=$weight -v infile="$tmpdir/overlaps" -v inrttmsfile="$input_rttms" \
+		gawk -v weight=$weight -v infile="$tmpdir/overlaps" -v inrttmsfile="$input_rttms" -v incount="$incount" \
 			'{ 
 				overlapsWithLock = 0;
 				durationConflict = 0;
@@ -277,23 +277,35 @@ cat $mapped_rttms |
 				}
 				close(infile); # FINN: Crucial - otherwise overlaps is only read once
 				if (durationConflict != 0) {
-					nf = split(durationConflict, union_fields)
-					print $2, $3, union_fields[6], "1-START", union_fields[5], weight;
-					print $2, $3, union_fields[6]+union_fields[7], "0-STOP", union_fields[5], weight;
+					nf = split(durationConflict, union_fields);
+					for (i = 1; i < incount; i++) {
+						print $2, $3, union_fields[6], "1-START", union_fields[5], weight;
+						print $2, $3, union_fields[6]+union_fields[7], "0-STOP", union_fields[5], weight;
+					}
+					close(inrttmsfile);
 				} else if (assertRename != 0 && overlapsWithLock == 0) {
-					nf = split(assertRename, fields)
+					nf = split(assertRename, fields);
 					print $2, $3, $4, "1-START", fields[5], weight;
 					print $2, $3, $4+$5, "0-STOP", fields[5], weight;
 				} else if (overlapsWithLock == 0) {
 					print $2, $3, $4, "1-START", $8, weight; # FINN: e.g. ex1 1 0.75 1-START sys1:speaker_b 1
 					print $2, $3, $4+$5, "0-STOP", $8, weight;
 				}
-				if (durationLocked != 0) {
-					nf = split(durationLocked, fields)
-					while (getline inputline < inrttmsfile > 0) { # FINN: 
-						print $2, $3, fields[3], "1-START", fields[5], weight; 
-						print $2, $3, fields[3]+fields[4], "0-STOP", fields[5], weight;
+				if (durationLocked != 0 && durationConflict == 0) {
+					nf = split(durationLocked, fields);
+					name = "";
+					if (assertRename != 0) {
+						split(assertRename, renameFields);
+						name = renameFields[5]; # if region has been renamed, retain new name
+					} else { 
+						name = fields[5];
+					}
+					# while (getline inputline < inrttmsfile > 0) { # FINN: 
+					for (i = 2; i < incount; i++) {  
+						print $2, $3, fields[3], "1-START", name, weight; 
+						print $2, $3, fields[3]+fields[4], "0-STOP", name, weight;
 					} 
+					close(inrttmsfile);
 				}
 			 }' $rttm 
 	done | sort +0 -1 +1 -2 +2n -3 >$tmpdir/collated # FINN: sort first column asc., second asc., third numerical (-n) desc.
