@@ -72,9 +72,15 @@ FILENAME == ARGV[2] {
               print "CONFLICT", ARGV[1], start_time[k], duration[k], 
                 "conflict:"speaker[k], min_start, max_duration >> output_file;
             } else {
-              print "CONFLICT", ARGV[1], start_time[k], duration[k], 
-                "conflict:"speaker[k]"/"other_speaker[o_count], min_start, max_duration >> output_file;
-              print ARGV[2], other_start_time[o_count], other_duration[o_count] >> output_file; # Remove extra region (has been merged)
+              if (both_spkr_locked && !both_dur_locked) { # Retain original start/stop if just speaker locked
+                print "CONFLICT", ARGV[1], start_time[k], duration[k], 
+                  "conflict:"speaker[k]"/"other_speaker[o_count], start_time[k], end_time[k]-start_time[k] >> output_file;
+                print ARGV[2], other_start_time[o_count], other_duration[o_count] >> output_file; # Remove extra region (has been merged)
+              } else {
+                print "CONFLICT", ARGV[1], start_time[k], duration[k], 
+                  "conflict:"speaker[k]"/"other_speaker[o_count], min_start, max_duration >> output_file;
+                print ARGV[2], other_start_time[o_count], other_duration[o_count] >> output_file; # Remove extra region (has been merged)
+              }
             }
           } else if (dur_locked[k] == 1) { # Flag overlapping region for removal
             print ARGV[2], other_start_time[o_count], other_duration[o_count] >> output_file;

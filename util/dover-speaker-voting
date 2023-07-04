@@ -35,7 +35,7 @@ function rename_to_orig(input) {
 }
 
 #
-# Restores lock state of regions if not conflicted: appends dur_lock, spkr_lock, or_lock
+# Restores lock state of regions if not conflicted: appends dur_lock, spkr_lock, or_lock in binary format [0/1]
 #
 
 function restore_lock_state(start, duration, speaker) {
@@ -76,6 +76,8 @@ function restore_lock_state(start, duration, speaker) {
 function restore_lock_type(start, duration, speaker) {
 	output_name = "";
 	if (speaker ~ "conflict") {
+		dur_conflict_count = 0; # counts number of 
+		spkr_conflict_count = 0;
 		while (getline line < input_rttms > 0) {
 			split(line, fields); 
 			while (getline line2 < fields[2] > 0) {
@@ -85,16 +87,22 @@ function restore_lock_type(start, duration, speaker) {
 				(start <= fields2[4]+fields2[5] && fields2[4] <= start+duration ||
 				fields2[4] <= start+duration && start < fields2[4]+fields2[5])) {
 					if (fields2[10] == 1 && output_name !~ "dur_lock") {
-						output_name = output_name "dur_lock:";
+						dur_conflict_count++;
 					}
 					if (fields2[11] == 1 && output_name !~ "spkr_lock") {
-						output_name = output_name "spkr_lock:";
+						spkr_conflict_count++;
 					}
 				}
 			}
 			close(fields[2]);
 		}
 		close(input_rttms);
+		if (dur_conflict_count > 1) {
+			output_name = output_name "dur_lock:";
+		}
+		if (spkr_conflict_count > 1) {
+			output_name = output_name "spkr_lock:";
+		}
 	}
 	return output_name;
 }

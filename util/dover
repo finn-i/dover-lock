@@ -300,7 +300,6 @@ cat $mapped_rttms |
 					} else { 
 						name = fields[5];
 					}
-					# while (getline inputline < inrttmsfile > 0) { # FINN: 
 					for (i = 2; i < incount; i++) {  
 						print $2, $3, fields[3], "1-START", name, weight; 
 						print $2, $3, fields[3]+fields[4], "0-STOP", name, weight;
