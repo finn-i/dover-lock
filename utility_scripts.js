@@ -620,8 +620,8 @@ function loadAudio(audio, sectionData) {
    });
 
    wavesurfer.on('ready', function() { // retrieve regions once waveforms have loaded
-      window.onbeforeunload = (e) => {
-         if (undoStates.length > 1) { 
+      window.onbeforeunload = (e) => { 
+         if (undoStates.length > 1 && gs.variables.allowEditing === '1') { 
             e.returnValue = "Data will be lost if you leave the page, are you sure?";
             return "Data will be lost if you leave the page, are you sure?";
          }
@@ -746,32 +746,34 @@ function loadAudio(audio, sectionData) {
     * @param {*} spkrObj If CSV data is not given, speakerObjects are instead checked
     */
    function checkCSVForConflict(version, csvData, spkrObj) {  
-      let hasConflict = false;
-      if (csvData !== "") {
-         let dataLines = csvData.split(/\r\n|\n/);
-         for (const line of dataLines) {
-            const speaker = line.split(",")[0];
-            if (speaker.includes("conflict")) {
-               hasConflict = true;
-               break;
+      if (editMode && previousVersionsExist) {
+         let hasConflict = false;
+         if (csvData !== "") {
+            let dataLines = csvData.split(/\r\n|\n/);
+            for (const line of dataLines) {
+               const speaker = line.split(",")[0];
+               if (speaker.includes("conflict")) {
+                  hasConflict = true;
+                  break;
+               }
+            }
+         } else {
+            for (const entry of spkrObj) {
+               if (entry.speaker.includes("conflict")) {
+                  hasConflict = true;
+                  break;
+               }
             }
          }
-      } else {
-         for (const entry of spkrObj) {
-            if (entry.speaker.includes("conflict")) {
-               hasConflict = true;
-               break;
-            }
+         if (hasConflict && document.getElementById(version).children.length === 0) { // draw icon if conflict was found
+            let img = document.createElement("img");
+            img.className = "version-has-conflict";
+            img.src = interface_bootstrap_images + "exclamation-red.svg";
+            document.getElementById(version).append(img);
          }
-      }
-      if (hasConflict && document.getElementById(version).children.length === 0) { // draw icon if conflict was found
-         let img = document.createElement("img");
-         img.className = "version-has-conflict";
-         img.src = interface_bootstrap_images + "exclamation-red.svg";
-         document.getElementById(version).append(img);
-      }
-      if (!hasConflict && document.getElementById(version).children.length === 1) { // ensure icon is removed if conflict wasn't found
-         document.getElementById(version).getElementsByClassName("version-has-conflict")[0].remove();
+         if (!hasConflict && document.getElementById(version).children.length === 1) { // ensure icon is removed if conflict wasn't found
+            document.getElementById(version).getElementsByClassName("version-has-conflict")[0].remove();
+         }
       }
    }
 
@@ -2513,6 +2515,13 @@ function loadAudio(audio, sectionData) {
       });
    }
 
+   function updateUniqueSpeakers() {
+      currSpeakerSet.uniqueSpeakers = [];
+      for (const reg of currSpeakerSet.tempSpeakerObjects) {
+         if (!currSpeakerSet.uniqueSpeakers.includes(reg.speaker)) currSpeakerSet.uniqueSpeakers.push(reg.speaker);
+      }
+   }
+
    /**
    * Changes the associated speaker name of a region, updating the speaker set
    */
@@ -2548,6 +2557,7 @@ function loadAudio(audio, sectionData) {
             }
             updateChapterConflictIcons();
             checkCSVForConflict(selectedVersions[currSpeakerSet.isSecondary ? 1 : 0], "", currSpeakerSet.tempSpeakerObjects);
+            updateUniqueSpeakers();
          } else { console.log("no region selected") }
       } else { console.log("no text in speaker input"); speakerInput.style.outline = "2px solid firebrick"; }
    }
@@ -2696,6 +2706,8 @@ function loadAudio(audio, sectionData) {
    * associated file to tempSpeakerObjects CSV.
    */
    function commitChanges() {
+      ajaxSetUniqueSpeakerMeta();
+      return;
       if (savePopupCommitMsg.value && savePopupCommitMsg.value.length > 0) {
          console.log('committing with message: ' + savePopupCommitMsg.value);
          $.ajax({
@@ -2731,15 +2743,37 @@ function loadAudio(audio, sectionData) {
    }
 
    function ajaxSetAssocFile() { // sets current document's associated file to tempSpeakerObjects
-         $.ajax({
-            type: "POST",
-            url: gs.xsltParams.library_name,
-            data: { "o" : "json", "a": "g", "rt": "r", "ro": "0", "s": "ModifyMetadata", "s1.collection": gs.cgiParams.c, "s1.site": gs.xsltParams.site_name, "s1.d": gs.cgiParams.d, 
-                    "s1.a": "set-archives-assocfile", "s1.assocname": "structured-audio.csv", "s1.filedata": speakerObjToCSVText() },
-         }).then((out) => {
+      $.ajax({
+         type: "POST",
+         url: gs.xsltParams.library_name,
+         data: { "o" : "json", "a": "g", "rt": "r", "ro": "0", "s": "ModifyMetadata", "s1.collection": gs.cgiParams.c, "s1.site": gs.xsltParams.site_name, "s1.d": gs.cgiParams.d, 
+                  "s1.a": "set-archives-assocfile", "s1.assocname": "structured-audio.csv", "s1.filedata": speakerObjToCSVText() },
+      }).then((out) => {
+         if (out.page.pageResponse.status.code == GSSTATUS_SUCCESS) {
             console.log('set-archives-assocfile success with status code: ' + out.page.pageResponse.status.code);
             resetUndoStates();
-         }, (error) => { console.log("set_assoc_url error:"); console.log(error); });
+            ajaxSetUniqueSpeakerMeta();
+         } else {
+            console.error("set-archives-assocfile error with code: " + out.page.pageResponse.status.code);
+         }
+      }, (error) => { console.log("set_assoc_url error:"); console.log(error); });
+   }
+
+   function ajaxSetUniqueSpeakerMeta() {
+      console.log("currSpeakerSet: " + currSpeakerSet.uniqueSpeakers);
+      $.ajax({
+         type: "POST",
+         url: gs.xsltParams.library_name,
+         data: { "o" : "json", "a": "g", "rt": "r", "ro": "0", "s": "ModifyMetadata", "s1.collection": gs.cgiParams.c, "s1.site": gs.xsltParams.site_name, "s1.d": gs.cgiParams.d, 
+                  "s1.a": "set-metadata-array", "s1.where": "archives|index", "s1.json": 
+                     JSON.stringify([{"docid": gs.cgiParams.d, "metatable":[{"metaname":"SpeakerNames", "metavals": currSpeakerSet.uniqueSpeakers}], "metamode":"override"}])
+               },
+      }).then((out) => {
+         console.log(out.page.pageResponse.status.content)
+         if (out.page.pageResponse.status.code == GSSTATUS_SUCCESS) {
+            console.log('set-metadata-array success with status code: ' + out.page.pageResponse.status.code);
+         } 
+      }, (error) => { console.log("set-metadata-array error:"); console.log(error); });
    }
 
    function speakerObjToCSVText() { // converts tempSpeakerObjects to csv-like string 
@@ -2945,6 +2979,7 @@ function loadAudio(audio, sectionData) {
             else undoButton.classList.remove("disabled");
          }
          if (undoLevel < undoStates.length) redoButton.classList.remove("disabled");
+         updateUniqueSpeakers();
       }
    }
 
@@ -2992,6 +3027,7 @@ function loadAudio(audio, sectionData) {
             else redoButton.classList.remove("disabled");
          }
          if (undoLevel < undoStates.length) undoButton.classList.remove("disabled");
+         updateUniqueSpeakers();
       }
    }
 
