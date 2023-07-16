@@ -765,13 +765,13 @@ function loadAudio(audio, sectionData) {
                }
             }
          }
-         if (hasConflict && document.getElementById(version).children.length === 0) { // draw icon if conflict was found
+         if (hasConflict && document.getElementById(version) && document.getElementById(version).children.length === 0) { // draw icon if conflict was found
             let img = document.createElement("img");
             img.className = "version-has-conflict";
             img.src = interface_bootstrap_images + "exclamation-red.svg";
             document.getElementById(version).append(img);
          }
-         if (!hasConflict && document.getElementById(version).children.length === 1) { // ensure icon is removed if conflict wasn't found
+         if (!hasConflict && document.getElementById(version) && document.getElementById(version).children.length === 1) { // ensure icon is removed if conflict wasn't found
             document.getElementById(version).getElementsByClassName("version-has-conflict")[0].remove();
          }
       }
@@ -851,7 +851,7 @@ function loadAudio(audio, sectionData) {
             }
             if (currentRegions.length == 1)  currentRegions = []; // clear selected regions if there is only one
          } else if (e.shiftKey) { // shift was held during click
-            clearChapterSearch();
+            setChapterSearch("");
             if (getCurrentRegionIndex() != -1 && getIndexOfRegion(region) != -1) {
                if (currentRegions && currentRegions.length > 0) {
                   if (Math.max(...getCurrentRegionsIndexes()) < getIndexOfRegion(region)) { // shifting forwards / down
@@ -1271,8 +1271,8 @@ function loadAudio(audio, sectionData) {
       }
    }
 
-   function clearChapterSearch() { // clears search filter and updates results
-      chapterSearchInput.value = "";
+   function setChapterSearch(text) { // clears search filter and updates results
+      chapterSearchInput.value = text;
       chapterSearchInput.dispatchEvent(new Event("input"));
    }
 
@@ -1696,7 +1696,7 @@ function loadAudio(audio, sectionData) {
       dualMode = dualModeCheckbox.checked; 
       currSpeakerSet = primarySet;
       if (!dualMode) removeCurrentRegion();
-      clearChapterSearch();
+      setChapterSearch("");
       reloadRegionsAndChapters();
       if (dualMode && previousVersionsExist) {  
          if (!secondaryLoaded && !initialLoad) {
@@ -1729,7 +1729,7 @@ function loadAudio(audio, sectionData) {
    * @param {string} id ID of clicked caret image
    */
    function caretClicked(id) {
-      clearChapterSearch();
+      setChapterSearch("");
       if (id === "primary-caret") {
          currSpeakerSet = primarySet;
          swapCarets(true);
@@ -2026,8 +2026,9 @@ function loadAudio(audio, sectionData) {
                label: speakerName,
             },
             color: regColour + regionTransparency,
-            ...(selected) && {color: "rgba(255,50,50,0.5)"},
+            // ...(selected) && {color: "rgba(255,50,50,0.5)"}, // removed for readability
          });
+         if (selected) associatedReg.color = "rgba(255,50,50,0.5)";
          data.tempSpeakerObjects[i].region = associatedReg;
 
          if (editMode && data.tempSpeakerObjects[i].speaker.includes("conflict")) { 
@@ -2395,7 +2396,8 @@ function loadAudio(audio, sectionData) {
    * Adds a new region to the waveform at the current caret location with the speaker name "NEW_SPEAKER"
    */
    function createNewRegion() { // adds a new region to the waveform
-      clearChapterSearch();
+   console.log(currSpeakerSet.tempSpeakerObjects)
+      setChapterSearch("");
       const speaker = "NEW_SPEAKER"; // default name
       if (!currSpeakerSet.uniqueSpeakers.includes(speaker)) { currSpeakerSet.uniqueSpeakers.push(speaker) }
       const start = newRegionOffset + wavesurfer.getCurrentTime();
@@ -2527,7 +2529,7 @@ function loadAudio(audio, sectionData) {
    */
    function speakerChange() {
       const newSpeaker = speakerInput.value;
-      clearChapterSearch();
+      setChapterSearch("");
       if (newSpeaker && newSpeaker.trim() != "") {
          speakerInput.style.outline = "2px solid transparent";
          if (getCurrentRegionIndex() != -1) { // if a region is selected
@@ -2707,7 +2709,7 @@ function loadAudio(audio, sectionData) {
    */
    function commitChanges() {
       ajaxSetUniqueSpeakerMeta();
-      return;
+      // return;
       if (savePopupCommitMsg.value && savePopupCommitMsg.value.length > 0) {
          console.log('committing with message: ' + savePopupCommitMsg.value);
          $.ajax({
@@ -2766,12 +2768,17 @@ function loadAudio(audio, sectionData) {
          url: gs.xsltParams.library_name,
          data: { "o" : "json", "a": "g", "rt": "r", "ro": "0", "s": "ModifyMetadata", "s1.collection": gs.cgiParams.c, "s1.site": gs.xsltParams.site_name, "s1.d": gs.cgiParams.d, 
                   "s1.a": "set-metadata-array", "s1.where": "archives|index", "s1.json": 
-                     JSON.stringify([{"docid": gs.cgiParams.d, "metatable":[{"metaname":"SpeakerNames", "metavals": currSpeakerSet.uniqueSpeakers}], "metamode":"override"}])
+                     JSON.stringify([{"docid": gs.cgiParams.d, "metatable":[{"metaname":"SpeakerName", "metavals": currSpeakerSet.uniqueSpeakers}], "metamode":"override"}])
                },
       }).then((out) => {
          console.log(out.page.pageResponse.status.content)
          if (out.page.pageResponse.status.code == GSSTATUS_SUCCESS) {
             console.log('set-metadata-array success with status code: ' + out.page.pageResponse.status.code);
+            // buildCollections([gs.cgiParams.c], null, () => {
+            //    console.log("yay rebuilt!");
+            // });
+            gs.documentMetadata.isSpeakerChange = true;
+            saveAndRebuild(true); 
          } 
       }, (error) => { console.log("set-metadata-array error:"); console.log(error); });
    }
@@ -2935,7 +2942,7 @@ function loadAudio(audio, sectionData) {
     */
    function undo() {
       if (!undoButton.classList.contains("disabled") && editMode) { // ensure there exist states to undo to
-         clearChapterSearch();
+         setChapterSearch("");
          if (undoLevel - 1 < 0) console.log("ran out of undos");
          else {            
             removeCurrentRegion();  
@@ -2988,7 +2995,7 @@ function loadAudio(audio, sectionData) {
     */
    function redo() {
       if (!redoButton.classList.contains("disabled") && editMode) { // ensure there exist states to redo to
-         clearChapterSearch();
+         setChapterSearch("");
          if (undoLevel + 1 >= undoStates.length) console.log("ran out of redos");
          else {
             if (undoStates[undoLevel+1].type == "dualModeChange") { // toggle dual mode
