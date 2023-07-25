@@ -28,7 +28,10 @@ try:
     with open(inputFile, "r") as csv_input:
       reader = csv.reader(csv_input, delimiter=",")
       for i, line in enumerate(reader):
-        rttm_writer.write(" ".join(["SPEAKER", recordingID, "1", line[1], str(Decimal(line[2])-Decimal(line[1])), "<NA>", "<NA>", line[0], "<NA>", "<NA>"]) + "\n")
+        dur_lock = "0" if line[3] == "false" else "1"
+        spkr_lock = "0" if line[4] == "false" else "1"
+        bth_lock = "0" if line[5] == "false" else "1"
+        rttm_writer.write(" ".join(["SPEAKER", recordingID, "1", line[1], str(Decimal(line[2])-Decimal(line[1])), "<NA>", "<NA>", line[0], "<NA>", dur_lock, spkr_lock, bth_lock]) + "\n")
   print("conversion finished with output file " + outputFile)
 except Exception as e: 
   print(e)

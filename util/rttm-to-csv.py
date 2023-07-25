@@ -25,7 +25,10 @@ try:
       reader = csv.reader(rttm_input, delimiter=" ")
       csv_writer = csv.writer(out_file, delimiter=",")
       for i, line in enumerate(reader):
-        csv_writer.writerow([line[7], line[3], str(Decimal(line[3])+Decimal(line[4]))])
+        dur_lock = "false" if line[9] == "0" else "true"
+        spkr_lock = "false" if line[10] == "0" else "true"
+        bth_lock = "false" if line[11] == "0" else "true"
+        csv_writer.writerow([line[7], line[3], str(Decimal(line[3])+Decimal(line[4])), dur_lock, spkr_lock, bth_lock])
   print("conversion finished with output file " + outputFile)
 except Exception as e: 
   print(e)
