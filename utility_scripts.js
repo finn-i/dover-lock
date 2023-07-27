@@ -449,6 +449,7 @@ function loadAudio(audio, sectionData) {
    const timelineMenuDualMode = document.getElementById("timeline-menu-dualmode");
    const timelineMenuRegionConflict = document.getElementById("timeline-menu-region");
    const timelineMenuSpeakerConflict = document.getElementById("timeline-menu-speaker");
+   const timelineMenuMerge = document.getElementById("timeline-menu-merge");
    const versionSelectMenu = document.getElementById('version-select-menu');
    const versionSelectLabels = document.querySelectorAll(".track-arrow");
    const savePopup = document.getElementById("save-popup");
@@ -517,6 +518,7 @@ function loadAudio(audio, sectionData) {
    timelineMenuDualMode.addEventListener("click", () => dualModeChanged());
    timelineMenuRegionConflict.addEventListener("click", showStartStopConflicts);
    timelineMenuSpeakerConflict.addEventListener("click", showSpeakerNameConflicts);
+   timelineMenuMerge.addEventListener("click", mergeTracks);
 
    savePopupCancel.addEventListener("click", toggleSavePopup)
    savePopupCommit.addEventListener("click", commitChanges);
@@ -573,6 +575,10 @@ function loadAudio(audio, sectionData) {
          if (!isInCurrentRegions(region)) {
             removeRegionBounds();
             drawRegionBounds(region, wave.scrollLeft, "black");
+         } else {
+            for (const reg of currentRegions) {
+               reg.region.update({color: "rgba(255,50,50,0.5)"})
+            }
          }
          if (isCurrentRegion(region) && editMode) drawRegionBounds(region, wave.scrollLeft, "FireBrick");
       }
@@ -1412,6 +1418,46 @@ function loadAudio(audio, sectionData) {
       }
    }
 
+   /**
+    * Merges the two visible tracks using DOVER-Lock, generating a new consensus output
+    */
+   function mergeTracks() {
+      console.log("merging tracks...");
+      if (dualMode) {
+         let primaryRTTM = speakerObjectToRTTM(primarySet.tempSpeakerObjects);
+         let secondaryRTTM = speakerObjectToRTTM(secondarySet.tempSpeakerObjects);
+         // TODO: call gs function to merge two tracks.
+      }
+      // console.log("tracks merged.");
+   }
+
+   /**
+    * Convert speaker object to updated 12-field RTTM format to be used as input to DOVER-Lock system
+    * @param {Object} obj Speaker object to be converted 
+    * @returns {String} Space-delimited RTTM string representing all speaker regions found in object
+    */
+   function speakerObjectToRTTM(obj) { 
+      let output = "";
+      for (const entry of obj) {
+         const regex = new RegExp("SPEAKER_\\d{2}");
+         let speaker_lock = !regex.test(entry.speaker);
+         let line = ["SPEAKER", gs.documentMetadata.Title.replace(" ", "-"), "1", parseFloat(entry.start).toFixed(2), parseFloat(entry.end-entry.start).toFixed(2), 
+            "<NA>","<NA>", entry.speaker, "<NA>", entry.locked?1:0, speaker_lock?1:0, (entry.locked || speaker_lock)?1:0].join(" ");
+         output = output.concat("\n", line);
+      }
+      return output;
+   }
+
+   /** TODO
+    * Convert RTTM file to CSV to be set ass assoc file
+    * Also populates a speaker object to represent DOVER-Lock output version
+    * @param {*} rttm 
+    */
+   function RTTMToCSV(rttm) {
+      let output = "";
+      return output;
+   }
+
    function hideAll() { // hides all regions and chapters
       for (const primIdx in primarySet.tempSpeakerObjects) {
          for (const secIdx in secondarySet.tempSpeakerObjects) {
@@ -1708,6 +1754,7 @@ function loadAudio(audio, sectionData) {
          document.getElementById("caret-container").style.display = "flex";
          timelineMenuRegionConflict.classList.remove("disabled");
          timelineMenuSpeakerConflict.classList.remove("disabled");
+         timelineMenuMerge.classList.remove("disabled");
          $('#track-set-label-bottom').fadeIn(100);
          selectedVersions[1] = document.getElementById('track-set-label-bottom').children[0].innerText;
       } else {
@@ -1718,6 +1765,7 @@ function loadAudio(audio, sectionData) {
          timelineMenuSpeakerConflict.firstElementChild.checked = false;
          timelineMenuRegionConflict.classList.add("disabled");
          timelineMenuSpeakerConflict.classList.add("disabled");
+         timelineMenuMerge.classList.add("disabled");
          $('#track-set-label-bottom').fadeOut(100);
       }
       currSpeakerSet = primarySet;
@@ -2153,15 +2201,19 @@ function loadAudio(audio, sectionData) {
                drawRegionMenuButton(region);
             }
          }
-         if (chapters.childNodes[getIndexOfRegion(region)]) chapters.childNodes[getIndexOfRegion(region)].style.backgroundColor = colour;
+         if (chapters.childNodes[getIndexOfRegion(region)]) {
+            chapters.childNodes[getIndexOfRegion(region)].style.backgroundColor = colour;
+         }
       }
    }
 
    function regionEnter(region) {
       if (isCurrentRegion(region) || isInCurrentRegions(region)) {
          region.update({ color: "rgba(255, 50, 50, 0.5)" });
+         console.log('regionEnter: set to red')
       } else {
          region.update({ color: "rgba(255, 255, 255, 0.3)" });
+         console.log('regionEnter: set to grey')
       }
       const currRegion = currSpeakerSet.tempSpeakerObjects[getIndexOfRegion(region)];
       if (editMode && currRegion) {
@@ -2176,7 +2228,7 @@ function loadAudio(audio, sectionData) {
    }
 
    function regionLeave(region) { 
-      if (itemType == "chapter") {
+      if (itemType == "chapter" && region) {
          if (isCurrentRegion(region) || isInCurrentRegions(region)) {
             region.update({ color: "rgba(255, 50, 50, 0.5)" });
          // } else if (!(wavesurfer.getCurrentTime() + 0.1 < region.end && wavesurfer.getCurrentTime() > region.start)) {
@@ -2184,9 +2236,11 @@ function loadAudio(audio, sectionData) {
             let index = region.id.replace("region", "");
             if (regionColourSet.find(item => item.name === currSpeakerSet.tempSpeakerObjects[index].speaker)) {
                region.update({ color: regionColourSet.find(item => item.name === currSpeakerSet.tempSpeakerObjects[index].speaker).colour + regionTransparency });
+               console.log('regionLeave: set to existing colour')
             } else {
                regionColourSet.push({ name: currSpeakerSet.tempSpeakerObjects[index].speaker, colour: colourbrewerSet[(index+1)%8]});
                region.update({ color: regionColourSet.at(-1).colour + regionTransparency });
+               console.log('regionLeave: set to new colour')
             }
          }
          if (region.element.getElementsByTagName("img").length > 0 && !isCurrentRegion(region) && !isInCurrentRegions(region)) {
@@ -2196,8 +2250,9 @@ function loadAudio(audio, sectionData) {
                }
             }
          }
-      } else {
+      } else if (region) {
          region.update({ color: "rgba(255, 255, 255, 0.1)" });
+         console.log('regionLeave: set to dark grey')
       }
    }
 
@@ -2754,7 +2809,7 @@ function loadAudio(audio, sectionData) {
          if (out.page.pageResponse.status.code == GSSTATUS_SUCCESS) {
             console.log('set-archives-assocfile success with status code: ' + out.page.pageResponse.status.code);
             resetUndoStates();
-            ajaxSetUniqueSpeakerMeta();
+            // ajaxSetUniqueSpeakerMeta();
          } else {
             console.error("set-archives-assocfile error with code: " + out.page.pageResponse.status.code);
          }
@@ -2762,25 +2817,58 @@ function loadAudio(audio, sectionData) {
    }
 
    function ajaxSetUniqueSpeakerMeta() {
-      console.log("currSpeakerSet: " + currSpeakerSet.uniqueSpeakers);
-      $.ajax({
-         type: "POST",
-         url: gs.xsltParams.library_name,
-         data: { "o" : "json", "a": "g", "rt": "r", "ro": "0", "s": "ModifyMetadata", "s1.collection": gs.cgiParams.c, "s1.site": gs.xsltParams.site_name, "s1.d": gs.cgiParams.d, 
-                  "s1.a": "set-metadata-array", "s1.where": "archives|index", "s1.json": 
-                     JSON.stringify([{"docid": gs.cgiParams.d, "metatable":[{"metaname":"SpeakerName", "metavals": currSpeakerSet.uniqueSpeakers}], "metamode":"override"}])
-               },
-      }).then((out) => {
-         console.log(out.page.pageResponse.status.content)
-         if (out.page.pageResponse.status.code == GSSTATUS_SUCCESS) {
-            console.log('set-metadata-array success with status code: ' + out.page.pageResponse.status.code);
-            // buildCollections([gs.cgiParams.c], null, () => {
-            //    console.log("yay rebuilt!");
-            // });
-            gs.documentMetadata.isSpeakerChange = true;
-            saveAndRebuild(true); 
-         } 
-      }, (error) => { console.log("set-metadata-array error:"); console.log(error); });
+      // get existing original SpeakerName values found in metadataTable
+      // compare with new SpeakerName values in currSpeakerSet.uniqueSpeakers
+      const metadataTable = document.getElementById("meta" + gs.documentMetadata.Identifier);
+      let tableSpeakerNames = []; // SpeakerName metadata entry as found in metadata table
+      $(".metaTableCellArea").each(function () {
+         if (this.classList.contains("SpeakerName")) {
+            tableSpeakerNames.push(this.value); 
+         }
+      });
+
+      console.log(tableSpeakerNames) // old
+      console.log(currSpeakerSet.uniqueSpeakers) // new
+
+      for (const uniqueSpeaker of currSpeakerSet.uniqueSpeakers) {
+         if (!tableSpeakerNames.includes(uniqueSpeaker)) {
+            // TODO: add speaker
+            let newMetaTextbox = metadataTable.parentElement.getElementsByTagName("input")[0];
+            newMetaTextbox.value = "SpeakerName"; // set metadata title
+            newMetaTextbox.nextElementSibling.click(); // click 'add new metadata'
+            $(".metaTableCellArea, .SpeakerName").last().val(uniqueSpeaker); // fill in new textbox
+         }
+      }
+
+      for (const oldUniqueSpeaker of tableSpeakerNames) {
+         if (!currSpeakerSet.uniqueSpeakers.includes(oldUniqueSpeaker)) {
+            console.log("Deleting speaker: " + oldUniqueSpeaker);
+            $(".metaTableCellArea").each(function() {
+               if (this.classList.contains("SpeakerName") && this.value === oldUniqueSpeaker) {
+                  this.parentElement.nextElementSibling.firstChild.click(); // manually click remove button
+               }
+            });
+         }
+      }
+      saveAndRebuild(true); 
+
+      // $.ajax({
+      //    type: "POST",
+      //    url: gs.xsltParams.library_name,
+      //    data: { "o" : "json", "a": "g", "rt": "r", "ro": "0", "s": "ModifyMetadata", "s1.collection": gs.cgiParams.c, "s1.site": gs.xsltParams.site_name, "s1.d": gs.cgiParams.d, 
+      //             "s1.a": "set-metadata-array", "s1.where": "archives|index", "s1.json": 
+      //                JSON.stringify([{"docid": gs.cgiParams.d, "metatable":[{"metaname":"SpeakerName", "metavals": currSpeakerSet.uniqueSpeakers}], "metamode":"override"}])
+      //          },
+      // }).then((out) => {
+      //    console.log(out.page.pageResponse.status.content)
+      //    if (out.page.pageResponse.status.code == GSSTATUS_SUCCESS) {
+      //       console.log('set-metadata-array success with status code: ' + out.page.pageResponse.status.code);
+      //       // buildCollections([gs.cgiParams.c], null, () => {
+      //       //    console.log("yay rebuilt!");
+      //       // });
+            
+      //    } 
+      // }, (error) => { console.log("set-metadata-array error:"); console.log(error); });
    }
 
    function speakerObjToCSVText() { // converts tempSpeakerObjects to csv-like string 
