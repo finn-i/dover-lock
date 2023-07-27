@@ -178,7 +178,7 @@
 					<div class="timeline-menu-item disabled" id="timeline-menu-speaker" title="Show regions with identical start/end times but conflicting speaker label">Speaker Label <input type="checkbox" /></div>
 					<hr></hr>
 					<div class="timeline-menu-subtext">Conflict Resolution</div>
-					<div class="timeline-menu-item disabled">Merge Tracks </div>
+					<div class="timeline-menu-item disabled" id="timeline-menu-merge">Merge Tracks </div>
 					<div class="timeline-menu-item disabled">Revert Merge </div>
 				</div>
         <div id="audioContainer" tabindex="0">
