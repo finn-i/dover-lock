@@ -318,7 +318,7 @@ function loadAudio(audio, sectionData) {
 
    let dualMode = false; // whether user has enabled dual mode
    let secondaryLoaded = false; // whether user has loaded the secondary set
-   let selectedVersions = ['current']; 
+   let selectedVersions = ["Latest"]; 
    let previousVersionsExist = true; // if audio has existing versions
 
    let waveformCursorX = 0;
@@ -699,7 +699,7 @@ function loadAudio(audio, sectionData) {
                timelineMenuSpeakerConflict.remove();
                $(".timeline-menu-subtext").remove();
             } else {
-               for (const version of ["current", ...data]) {
+               for (const version of ["latest", ...data]) {
                   canvasImages[version] = undefined;
                   let menuItem = document.createElement("div");
                   menuItem.classList.add("version-select-menu-item");
@@ -708,7 +708,7 @@ function loadAudio(audio, sectionData) {
                   menuItem.innerText = text.charAt(0).toUpperCase() + text.slice(1);
                   menuItem.addEventListener('click', versionClicked);
                   let dataObj = { a: 'get-archives-metadata', site: gs.xsltParams.site_name, c: gs.cgiParams.c, d: gs.cgiParams.d, metaname: "commitmessage" };
-                  if (version != "current") Object.assign(dataObj, {dv: version});
+                  if (version != "latest") Object.assign(dataObj, {dv: version});
                   $.ajax({ // get commitmessage metadata to show as hover tooltip
                      type: "GET",
                      url: gs.variables.metadataServerURL,
@@ -729,7 +729,7 @@ function loadAudio(audio, sectionData) {
                      dataType: "text",
                   }).then(csvData => {
                      setTimeout(()=>{ // timeout is needed for some reason ?? TODO
-                        if (version === "current") checkCSVForConflict("current", "", primarySet.tempSpeakerObjects);
+                        if (version === "latest") checkCSVForConflict("latest", "", primarySet.tempSpeakerObjects);
                         else checkCSVForConflict(version, csvData);
                      }, 1000)
                   }, (error) => { console.log("get-archives-metadata error:"); console.log(error); });
@@ -914,7 +914,7 @@ function loadAudio(audio, sectionData) {
    */
    function getAudioURLFromVersion(version) {
       let base_url = gs.variables.metadataServerURL + "?a=get-archives-assocfile&site=" + gs.xsltParams.site_name + "&c=" + gs.cgiParams.c + "&d=" + gs.cgiParams.d;
-      if (version !== "current") base_url += "&dv=" + version // get fldv if not current version
+      if (version !== "latest") base_url += "&dv=" + version // get fldv if not current version
       return base_url  + "&assocname=" + gs.documentMetadata.Audio;
    }
 
@@ -924,7 +924,7 @@ function loadAudio(audio, sectionData) {
    */
    function getCSVURLFromVersion(version) {
       let base_url = gs.variables.metadataServerURL + "?a=get-archives-assocfile&site=" + gs.xsltParams.site_name + "&c=" + gs.cgiParams.c + "&d=" + gs.cgiParams.d;
-      if (version !== "current") base_url += "&dv=" + version; // get fldv if not current version
+      if (version !== "latest") base_url += "&dv=" + version; // get fldv if not current version
       return base_url  + "&assocname=" + "structured-audio.csv";
    }
 
@@ -972,7 +972,7 @@ function loadAudio(audio, sectionData) {
          } else {
             $(".region-top").remove();
          }
-         document.getElementById('track-set-label-top').children[0].innerText = e.target.id.includes("nminus") ? e.target.id.replace("nminus-", "Previous(") + ")" : "Current"; // update top label text
+         document.getElementById('track-set-label-top').children[0].innerText = e.target.id.includes("nminus") ? e.target.id.replace("nminus-", "Previous(") + ")" : "Latest"; // update top label text
          selectedVersions[0] = e.target.id; // update the selected versions
       } else {
          if (currSpeakerSet.isSecondary) {
@@ -986,7 +986,7 @@ function loadAudio(audio, sectionData) {
          } else {
             $(".region-bottom").remove();
          }
-         document.getElementById('track-set-label-bottom').children[0].innerText = e.target.id.includes("nminus") ? e.target.id.replace("nminus-", "Previous(") + ")" : "Current"; // update bottom label text
+         document.getElementById('track-set-label-bottom').children[0].innerText = e.target.id.includes("nminus") ? e.target.id.replace("nminus-", "Previous(") + ")" : "Latest"; // update bottom label text
          selectedVersions[1] = e.target.id;
       }
       loadCSVFile(csv_url, setToUpdate, true);
@@ -1426,7 +1426,30 @@ function loadAudio(audio, sectionData) {
       if (dualMode) {
          let primaryRTTM = speakerObjectToRTTM(primarySet.tempSpeakerObjects);
          let secondaryRTTM = speakerObjectToRTTM(secondarySet.tempSpeakerObjects);
-         // TODO: call gs function to merge two tracks.
+         console.log(primaryRTTM);
+         console.log(secondaryRTTM);
+         let testRTTM = 
+            [`SPEAKER First Set 1 0.50 5.30 <NA> <NA> Jim <NA> 0 1 1
+            SPEAKER First Set 1 5.80 7.70 <NA> <NA> Johannes <NA> 0 1 1
+            SPEAKER First Set 1 16.10 4.30 <NA> <NA> Johannes <NA> 0 1 1`,
+            `SPEAKER Second Set 1 0.50 5.30 <NA> <NA> Jim <NA> 0 1 1
+            SPEAKER Second Set 1 5.80 7.70 <NA> <NA> Johannes <NA> 0 1 1
+            SPEAKER Second Set 1 16.10 4.30 <NA> <NA> Johannes <NA> 0 1 1`,
+            `SPEAKER Third Set 1 0.50 5.30 <NA> <NA> Jim <NA> 0 1 1
+            SPEAKER Third Set 1 5.80 7.70 <NA> <NA> Johannes <NA> 0 1 1
+            SPEAKER Third Set 1 16.10 4.30 <NA> <NA> Johannes <NA> 0 1 1`];
+         // TODO: call gs function to merge two tracks. lllll
+         $.ajax({
+            type: "POST",
+            url: "cgi-bin/dover-server.pl",
+            data: { "a": "run-dover", "c": gs.cgiParams.c, "site": gs.xsltParams.site_name, "inputitems": [primaryRTTM, secondaryRTTM] }
+         }).then((out) => {
+            if (out.page.pageResponse.status.code == GSSTATUS_SUCCESS) { 
+               console.log('run-dover success with status code: ' + out.page.pageResponse.status.code);
+            } else {
+               console.log('run-dover ERROR with status code: ' + out.page.pageResponse.status.code);
+            }
+         }, (error) => { console.error("run-dover error:"); console.error(error) }); 
       }
       // console.log("tracks merged.");
    }
@@ -1808,7 +1831,7 @@ function loadAudio(audio, sectionData) {
             // else showAudioLoader();
             let url = gs.variables.metadataServerURL + "?a=get-archives-assocfile&site=" + gs.xsltParams.site_name + 
                         "&c=" + gs.cgiParams.c + "&d=" + gs.cgiParams.d + "&assocname=" + gs.documentMetadata.Audio;
-            if (selectedVersions[0] !== "current") {
+            if (selectedVersions[0] !== "latest") {
                if (selectedVersions[0].includes("Previous")) url += "&dv=" + selectedVersions[0].replace("Previous(", "nminus-").replace(")", "");
                else url += "&dv=" + selectedVersions[0];
             }
@@ -1826,7 +1849,7 @@ function loadAudio(audio, sectionData) {
             // else showAudioLoader();
             let url = gs.variables.metadataServerURL + "?a=get-archives-assocfile&site=" + gs.xsltParams.site_name + 
                         "&c=" + gs.cgiParams.c + "&d=" + gs.cgiParams.d + "&assocname=" + gs.documentMetadata.Audio;
-            if (selectedVersions[1] !== "current") {
+            if (selectedVersions[1] !== "latest") {
                if (selectedVersions[1].includes("Previous")) url += "&dv=" + selectedVersions[1].replace("Previous(", "nminus-").replace(")", "");
                else url += "&dv=" + selectedVersions[1];
             }

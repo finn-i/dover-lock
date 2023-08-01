@@ -196,7 +196,7 @@
 							<div id="waveform-blocker"><div id="waveform-spinner"><xsl:text> </xsl:text></div></div>
 							<span id="waveform-loader">Loading audio</span>
 							<div class="track-set-label" id="track-set-label-top">
-								<span>Current</span>
+								<span>Latest</span>
 								<img class="track-arrow" title="Change version" src="interfaces/{$interface_name}/images/bootstrap/caret-right.svg"/>
 							</div>
 							<div class="track-set-label" id="track-set-label-bottom">
