@@ -1426,32 +1426,43 @@ function loadAudio(audio, sectionData) {
       if (dualMode) {
          let primaryRTTM = speakerObjectToRTTM(primarySet.tempSpeakerObjects);
          let secondaryRTTM = speakerObjectToRTTM(secondarySet.tempSpeakerObjects);
-         console.log(primaryRTTM);
-         console.log(secondaryRTTM);
-         let testRTTM = 
-            [`SPEAKER First Set 1 0.50 5.30 <NA> <NA> Jim <NA> 0 1 1
-            SPEAKER First Set 1 5.80 7.70 <NA> <NA> Johannes <NA> 0 1 1
-            SPEAKER First Set 1 16.10 4.30 <NA> <NA> Johannes <NA> 0 1 1`,
-            `SPEAKER Second Set 1 0.50 5.30 <NA> <NA> Jim <NA> 0 1 1
-            SPEAKER Second Set 1 5.80 7.70 <NA> <NA> Johannes <NA> 0 1 1
-            SPEAKER Second Set 1 16.10 4.30 <NA> <NA> Johannes <NA> 0 1 1`,
-            `SPEAKER Third Set 1 0.50 5.30 <NA> <NA> Jim <NA> 0 1 1
-            SPEAKER Third Set 1 5.80 7.70 <NA> <NA> Johannes <NA> 0 1 1
-            SPEAKER Third Set 1 16.10 4.30 <NA> <NA> Johannes <NA> 0 1 1`];
          // TODO: call gs function to merge two tracks. lllll
          $.ajax({
             type: "POST",
             url: "cgi-bin/dover-server.pl",
             data: { "a": "run-dover", "c": gs.cgiParams.c, "site": gs.xsltParams.site_name, "inputitems": [primaryRTTM, secondaryRTTM] }
-         }).then((out) => {
-            if (out.page.pageResponse.status.code == GSSTATUS_SUCCESS) { 
-               console.log('run-dover success with status code: ' + out.page.pageResponse.status.code);
-            } else {
-               console.log('run-dover ERROR with status code: ' + out.page.pageResponse.status.code);
-            }
+         }).then(dover_output => {
+            if (true) { // TODO: build informative return message + code
+               // increment fldv
+               $.ajax({
+                  type: "GET",
+                  url: mod_meta_base_url,
+                  data: { "o": "json", "s1.a": "inc-fldv-nminus1" }
+               }).then((out) => {
+                  if (out.page.pageResponse.status.code == GSSTATUS_SUCCESS) { 
+                     console.log('fldv inc success with status code: ' + out.page.pageResponse.status.code);
+                     // set primarySpeakerSet (and current set) to dover_output
+                     primarySet = {};
+                     primarySet.isSecondary = false;
+                     primarySet.speakerObjects = RTTMToSpeakerObject(dover_output);
+                     primarySet.tempSpeakerObjects = primarySet.speakerObjects;
+                     currSpeakerSet = primarySet;
+                     updateUniqueSpeakers();
+                     // set assoc file to dover_output. callback runs gs index speaker update / rebuild
+                     ajaxSetAssocFile(()=>{
+                        // switch out of dual-mode
+                        dualModeChanged(true, "false");
+                        reloadRegionsAndChapters();
+                     });
+                     
+                  } else {
+                     console.log('fldv inc ERROR with status code: ' + out.page.pageResponse.status.code);
+                  }
+               }, (error) => { console.log("inc-fldv-nminus1 error:\n" + error) });
+               
+            }  
          }, (error) => { console.error("run-dover error:"); console.error(error) }); 
       }
-      // console.log("tracks merged.");
    }
 
    /**
@@ -1472,12 +1483,23 @@ function loadAudio(audio, sectionData) {
    }
 
    /** TODO
-    * Convert RTTM file to CSV to be set ass assoc file
-    * Also populates a speaker object to represent DOVER-Lock output version
-    * @param {*} rttm 
+    * Convert RTTM file to speaker object to be set as new data
+    * CSV too?
+    * @param {String} rttm 
     */
-   function RTTMToCSV(rttm) {
-      let output = "";
+   function RTTMToSpeakerObject(rttm) {
+      let output = [];
+      for (const line of rttm.split("\n")) {
+         let split_line = line.split(" ");
+         if (split_line[0].length > 0) { // ensure line is not empty
+            // locked may need binary / 0-1 conversion
+            output.push({start: split_line[3], end: parseFloat(split_line[3]) + parseFloat(split_line[4]), speaker: split_line[7], locked: split_line[9]})
+         }
+         if (split_line.length > 0) {
+            console.log("line exists");
+
+         }
+      }
       return output;
    }
 
@@ -2598,7 +2620,7 @@ function loadAudio(audio, sectionData) {
    function updateUniqueSpeakers() {
       currSpeakerSet.uniqueSpeakers = [];
       for (const reg of currSpeakerSet.tempSpeakerObjects) {
-         if (!currSpeakerSet.uniqueSpeakers.includes(reg.speaker)) currSpeakerSet.uniqueSpeakers.push(reg.speaker);
+         if (reg.speaker && !currSpeakerSet.uniqueSpeakers.includes(reg.speaker)) currSpeakerSet.uniqueSpeakers.push(reg.speaker);
       }
    }
 
@@ -2822,7 +2844,7 @@ function loadAudio(audio, sectionData) {
       }, (error) => { console.log("commit_msg_url error:"); console.log(error); });
    }
 
-   function ajaxSetAssocFile() { // sets current document's associated file to tempSpeakerObjects
+   function ajaxSetAssocFile(optionalCallback) { // sets current document's associated file to tempSpeakerObjects
       $.ajax({
          type: "POST",
          url: gs.xsltParams.library_name,
@@ -2832,7 +2854,8 @@ function loadAudio(audio, sectionData) {
          if (out.page.pageResponse.status.code == GSSTATUS_SUCCESS) {
             console.log('set-archives-assocfile success with status code: ' + out.page.pageResponse.status.code);
             resetUndoStates();
-            // ajaxSetUniqueSpeakerMeta();
+            ajaxSetUniqueSpeakerMeta();
+            if (optionalCallback) optionalCallback();
          } else {
             console.error("set-archives-assocfile error with code: " + out.page.pageResponse.status.code);
          }
