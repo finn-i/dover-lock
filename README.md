@@ -1,5 +1,5 @@
 <!-- Project Title -->
-# COMPX594 Thesis: 
+# COMPX594 Thesis: User Edit Retention in Content Analysis Output Combination
 
 <!-- Project Description -->
 Core and utility scripts contributing to the retention of user edits when combining diarization outputs for error rate improvements. Additionally includes code which builds an enriched audio player and diarization editor. 
