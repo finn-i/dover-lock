@@ -76,7 +76,7 @@ function restore_lock_state(start, duration, speaker) {
 function restore_lock_type(start, duration, speaker) {
 	output_name = "";
 	if (speaker ~ "conflict") {
-		dur_conflict_count = 0; # counts number of 
+		dur_conflict_count = 0;
 		spkr_conflict_count = 0;
 		while (getline line < input_rttms > 0) {
 			split(line, fields); 
