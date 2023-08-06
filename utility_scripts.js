@@ -539,7 +539,6 @@ function loadAudio(audio, sectionData) {
    zoomSlider.addEventListener('input', function() { // slider changes waveform zoom
       let sliderValue = Number(this.value) / 4;
       if (sliderValue < 1) sliderValue = 1;
-      // sliderValue = sliderValue > 1 ? (sliderValue / 4) : 1; // ensure value is greater than 1
       wavesurfer.zoom(sliderValue); 
       if (currentRegion.speaker && getCurrentRegionIndex() != -1) { 
          setHoverSpeaker(currSpeakerSet.tempSpeakerObjects[getCurrentRegionIndex()].region.element.style.left, currentRegion.speaker);
@@ -575,9 +574,10 @@ function loadAudio(audio, sectionData) {
          if (!isInCurrentRegions(region)) {
             removeRegionBounds();
             drawRegionBounds(region, wave.scrollLeft, "black");
-         } else {
+         } else  {
             for (const reg of currentRegions) {
-               reg.region.update({color: "rgba(255,50,50,0.5)"})
+               if (!reg.region) reg.update({color: "rgba(255,50,50,0.5)"});
+               else reg.region.update({color: "rgba(255,50,50,0.5)"});
             }
          }
          if (isCurrentRegion(region) && editMode) drawRegionBounds(region, wave.scrollLeft, "FireBrick");
@@ -586,7 +586,9 @@ function loadAudio(audio, sectionData) {
    wavesurfer.on('region-mouseleave', function(region) { 
       hoverSpeaker.innerHTML = "";
       if (!mouseDown) {
-         if (!(wavesurfer.getCurrentTime() <= region.end && wavesurfer.getCurrentTime() >= region.start)) handleRegionColours(region, false); 
+         if (!(wavesurfer.getCurrentTime() <= region.end && wavesurfer.getCurrentTime() >= region.start)) {
+            handleRegionColours(region, false); 
+         }
          if (!editMode) hoverSpeaker.innerHTML = "";
          removeRegionBounds();
          if (currentRegion && currentRegion.speaker && getCurrentRegionIndex() != -1) { 
@@ -681,61 +683,9 @@ function loadAudio(audio, sectionData) {
          
          chapters.style.cursor = "default"; // remove load cursor
          wave.className = "audio-scroll";
-         $.ajax({
-            type: "GET",
-            url: gs.variables.metadataServerURL,
-            data: { a: 'get-fldv-info', site: gs.xsltParams.site_name, c: gs.cgiParams.c, d: gs.cgiParams.d },
-            dataType: "json",
-         }).then(data => {
-            if (data.includes("ERROR")) {
-               console.log("get-fldv-info Error: " + data);
-            } else if (data.length === 0) {
-               previousVersionsExist = false;
-               // console.log("no previous versions found");
-               $(".track-set-label").hide();
-               // $(".timeline-menu-item").hide();
-               timelineMenuDualMode.remove();
-               timelineMenuRegionConflict.remove();
-               timelineMenuSpeakerConflict.remove();
-               $(".timeline-menu-subtext").remove();
-            } else {
-               for (const version of ["latest", ...data]) {
-                  canvasImages[version] = undefined;
-                  let menuItem = document.createElement("div");
-                  menuItem.classList.add("version-select-menu-item");
-                  menuItem.id = version;
-                  let text = version.includes("nminus") ? version.replace("nminus-", "Previous(") + ")" : version;
-                  menuItem.innerText = text.charAt(0).toUpperCase() + text.slice(1);
-                  menuItem.addEventListener('click', versionClicked);
-                  let dataObj = { a: 'get-archives-metadata', site: gs.xsltParams.site_name, c: gs.cgiParams.c, d: gs.cgiParams.d, metaname: "commitmessage" };
-                  if (version != "latest") Object.assign(dataObj, {dv: version});
-                  $.ajax({ // get commitmessage metadata to show as hover tooltip
-                     type: "GET",
-                     url: gs.variables.metadataServerURL,
-                     data: dataObj,
-                     dataType: "text",
-                  }).then(comment => {
-                     if (data.includes("ERROR")) {
-                        console.log("get-archives-metadata Error: " + data);
-                     } else {
-                        menuItem.title = "Commit message: " + comment;
-                        versionSelectMenu.append(menuItem);
-                        [...versionSelectMenu.children].sort((a,b) => a.innerText>b.innerText?1:-1).forEach(n=>versionSelectMenu.appendChild(n)); // sort alphabetically
-                     }
-                  }, (error) => { console.log("get-archives-metadata error:"); console.log(error); });
-                  $.ajax({ // get conflict status of each version 
-                     type: "GET",
-                     url: getCSVURLFromVersion(version),
-                     dataType: "text",
-                  }).then(csvData => {
-                     setTimeout(()=>{ // timeout is needed for some reason ?? TODO
-                        if (version === "latest") checkCSVForConflict("latest", "", primarySet.tempSpeakerObjects);
-                        else checkCSVForConflict(version, csvData);
-                     }, 1000)
-                  }, (error) => { console.log("get-archives-metadata error:"); console.log(error); });
-               }
-            }
-         }, (error) => { console.log("get-fldv-info error:"); console.log(error); });
+         
+         reloadVersionDropdown();
+         
          initialLoad = false;
       }
       // fixes blank waveform/regions when loading Current -> Prev.1 -> Prev.2
@@ -744,6 +694,70 @@ function loadAudio(audio, sectionData) {
       wavesurfer.zoom((zoomSlider.value) / 4);
       hideAudioLoader();
    });
+
+   function reloadVersionDropdown() {
+      $.ajax({
+         type: "GET",
+         url: gs.variables.metadataServerURL,
+         data: { a: 'get-fldv-info', site: gs.xsltParams.site_name, c: gs.cgiParams.c, d: gs.cgiParams.d },
+         cache: false,
+         dataType: "json",
+      }).then(data => {
+         if (data.includes("ERROR")) {
+            console.log("get-fldv-info Error: " + data);
+         } else if (data.length === 0) {
+            previousVersionsExist = false;
+            // console.log("no previous versions found");
+            $(".track-set-label").hide();
+            timelineMenuDualMode.classList.add('disabled');
+            timelineMenuRegionConflict.classList.add('disabled');
+            timelineMenuSpeakerConflict.classList.add('disabled');
+         } else {
+            timelineMenuDualMode.classList.remove('disabled');
+            if (dualMode) {
+               timelineMenuRegionConflict.classList.remove('disabled');
+               timelineMenuSpeakerConflict.classList.remove('disabled');
+            }
+            for (const version of ["latest", ...data]) {
+               canvasImages[version] = undefined;
+               let menuItem = document.createElement("div");
+               menuItem.classList.add("version-select-menu-item");
+               menuItem.id = version;
+               let text = version.includes("nminus") ? version.replace("nminus-", "Previous(") + ")" : version;
+               menuItem.innerText = text.charAt(0).toUpperCase() + text.slice(1);
+               menuItem.addEventListener('click', versionClicked);
+               let dataObj = { a: 'get-archives-metadata', site: gs.xsltParams.site_name, c: gs.cgiParams.c, d: gs.cgiParams.d, metaname: "commitmessage" };
+               if (version != "latest") Object.assign(dataObj, {dv: version});
+               $.ajax({ // get commitmessage metadata to show as hover tooltip
+                  type: "GET",
+                  url: gs.variables.metadataServerURL,
+                  data: dataObj,
+                  dataType: "text",
+               }).then(comment => {
+                  if (data.includes("ERROR")) {
+                     console.log("get-archives-metadata Error: " + data);
+                  } else {
+                     $("#track-set-label-top").fadeIn(100);
+                     if (comment.length < 1) menuItem.title = "No commit message found!";
+                     else menuItem.title = "Commit message: " + comment;
+                     versionSelectMenu.append(menuItem);
+                     [...versionSelectMenu.children].sort((a,b) => a.innerText>b.innerText?1:-1).forEach(n=>versionSelectMenu.appendChild(n)); // sort alphabetically
+                  }
+               }, (error) => { console.log("get-archives-metadata error:"); console.log(error); });
+               $.ajax({ // get conflict status of each version 
+                  type: "GET",
+                  url: getCSVURLFromVersion(version),
+                  dataType: "text",
+               }).then(csvData => {
+                  setTimeout(()=>{ // timeout is needed for some reason ?? TODO
+                     if (version === "latest") checkCSVForConflict("latest", "", primarySet.tempSpeakerObjects);
+                     else checkCSVForConflict(version, csvData);
+                  }, 1000)
+               }, (error) => { console.log("get-archives-metadata error:"); console.log(error); });
+            }
+         }
+      }, (error) => { console.log("get-fldv-info error:"); console.log(error); });
+   }
 
    /**
     * Draws conflict icon next to versions containing conflicts
@@ -838,7 +852,7 @@ function loadAudio(audio, sectionData) {
             currentRegions = [];
             currentRegion = region;
             currentRegion.speaker = currentRegion.attributes.label.innerText;
-            wavesurfer.backend.seekTo(currentRegion.start);
+            wavesurfer.setCurrentTime(currentRegion.start);
          } else if (e.ctrlKey) { // control was held during click
             if (currentRegions.length == 0 && isCurrentRegion(region)) {
                removeCurrentRegion();
@@ -853,7 +867,7 @@ function loadAudio(audio, sectionData) {
                if (getIndexInCurrentRegions(region) == -1) currentRegions.push(region); // add if it doesn't already exist
                currentRegion = region;
                currentRegion.speaker = currentRegion.attributes.label.innerText;
-               wavesurfer.backend.seekTo(currentRegion.start); 
+               wavesurfer.setCurrentTime(currentRegion.start); 
             }
             if (currentRegions.length == 1)  currentRegions = []; // clear selected regions if there is only one
          } else if (e.shiftKey) { // shift was held during click
@@ -943,11 +957,9 @@ function loadAudio(audio, sectionData) {
       if (unsavedChanges) {
          const areYouSure = "There are unsaved changes.\nAre you sure you want to lose changes made in this version?";
          if (window.confirm(areYouSure)) {
-            console.log('OK');
             discardRegionChanges(true);
             changeVersion(e);
          } else {
-            console.log('CANCEL');
             return;
          }
       } else changeVersion(e);
@@ -964,10 +976,7 @@ function loadAudio(audio, sectionData) {
          if (!currSpeakerSet.isSecondary) {
             if (dualMode) $(".region-top").remove();
             else $(".wavesurfer-region").remove();
-            showAudioLoader();
-            // if (canvasImages[e.target.id]) { // if waveform image exists in cache
-            //    drawImageOnWaveform(canvasImages[e.target.id]);
-            // }            
+            showAudioLoader();         
             wavesurfer.load(audio_url); // load audio
          } else {
             $(".region-top").remove();
@@ -979,9 +988,6 @@ function loadAudio(audio, sectionData) {
             if (dualMode) $(".region-bottom").remove();
             else $(".wavesurfer-region").remove();
             showAudioLoader();
-            // if (canvasImages[e.target.id]) { // if waveform image exists in cache
-            //    drawImageOnWaveform(canvasImages[e.target.id]);
-            // }
             wavesurfer.load(audio_url);
          } else {
             $(".region-bottom").remove();
@@ -1085,11 +1091,8 @@ function loadAudio(audio, sectionData) {
       timelineMenu.classList.remove('visible'); 
       versionSelectMenu.classList.remove('visible'); 
       versionSelectLabels.forEach(arrow => {
-         // arrow.style.transform = 'rotate(90deg)';
-         // arrow.style.paddingTop = '0';
          arrow.style.display = 'inline';
       });
-      // console.log(e.target.classList)
       if (editMode && e.target.tagName !== "INPUT" && e.target.tagName !== "IMG" && !e.target.classList.contains("ui-button") && !$("#audio-dropdowns").has($(e.target)).length
          && !e.target.classList.contains("context-menu-item") && !e.target.classList.contains("ui-menu-item-wrapper")) {
          let currReg = getCurrentRegionIndex() != -1 ? currSpeakerSet.tempSpeakerObjects[getCurrentRegionIndex()].region : false; // save for deselection
@@ -1423,13 +1426,15 @@ function loadAudio(audio, sectionData) {
     */
    function mergeTracks() {
       console.log("merging tracks...");
+      showAudioLoader();
       if (dualMode) {
+         // build both inputs
          let primaryRTTM = speakerObjectToRTTM(primarySet.tempSpeakerObjects);
          let secondaryRTTM = speakerObjectToRTTM(secondarySet.tempSpeakerObjects);
-         // TODO: call gs function to merge two tracks. lllll
+         const doverServerURL = "cgi-bin/dover-server.pl";
          $.ajax({
             type: "POST",
-            url: "cgi-bin/dover-server.pl",
+            url: doverServerURL,
             data: { "a": "run-dover", "c": gs.cgiParams.c, "site": gs.xsltParams.site_name, "inputitems": [primaryRTTM, secondaryRTTM] }
          }).then(dover_output => {
             if (true) { // TODO: build informative return message + code
@@ -1451,8 +1456,12 @@ function loadAudio(audio, sectionData) {
                      // set assoc file to dover_output. callback runs gs index speaker update / rebuild
                      ajaxSetAssocFile(()=>{
                         // switch out of dual-mode
+                        secondaryLoaded = false;
+                        initialLoad = false;
                         dualModeChanged(true, "false");
-                        reloadRegionsAndChapters();
+                        hideAudioLoader();
+                        console.log("tracks merged.");
+                        // reloadRegionsAndChapters(); [called in dualmodechanged]
                      });
                      
                   } else {
@@ -1482,7 +1491,7 @@ function loadAudio(audio, sectionData) {
       return output;
    }
 
-   /** TODO
+   /** 
     * Convert RTTM file to speaker object to be set as new data
     * CSV too?
     * @param {String} rttm 
@@ -1492,12 +1501,8 @@ function loadAudio(audio, sectionData) {
       for (const line of rttm.split("\n")) {
          let split_line = line.split(" ");
          if (split_line[0].length > 0) { // ensure line is not empty
-            // locked may need binary / 0-1 conversion
+            // TODO: locked may need binary / 0-1 conversion
             output.push({start: split_line[3], end: parseFloat(split_line[3]) + parseFloat(split_line[4]), speaker: split_line[7], locked: split_line[9]})
-         }
-         if (split_line.length > 0) {
-            console.log("line exists");
-
          }
       }
       return output;
@@ -1649,24 +1654,8 @@ function loadAudio(audio, sectionData) {
             const selectedRegion = currentRegion;
          if (currentRegions && currentRegions.length > 1) { // copy multiple
             destinationSet.tempSpeakerObjects.push(...selectedRegions); // append current regions to dest. set
-            // currSpeakerSet.isSecondary ? caretClicked("primary-caret") : caretClicked("secondary-caret"); // swap selected speakerSet (clears current regions)
-            // for (const reg of destinationSet.tempSpeakerObjects) { // restore currentRegions in dest. set
-            //    for (const selReg of selectedRegions) {
-            //       if (regionsMatch(reg, selReg) && !containsRegion(currentRegions, reg)) { 
-            //          currentRegions.push(reg);
-            //       }
-            //    }
-            //    if (regionsMatch(reg, selectedRegion)) { currentRegion = reg; }
-            // }
          } else { // copy singular
             destinationSet.tempSpeakerObjects.push(selectedRegion); // append current region to dest. set
-            // currSpeakerSet.isSecondary ? caretClicked("primary-caret") : caretClicked("secondary-caret"); // swap selected speakerSet (clears current regions)
-            // for (const reg of destinationSet.tempSpeakerObjects) { // restore currentRegion in dest. set
-            //    if (regionsMatch(reg, selectedRegion)) { 
-            //       currentRegion = reg; 
-            //       break; 
-            //    }
-            // }
          }
          reloadRegionsAndChapters();
          if (!skipUndoState) addUndoState(primarySet, secondarySet, currSpeakerSet.isSecondary, dualMode, "copy", getCurrentRegionIndex());
@@ -1740,7 +1729,7 @@ function loadAudio(audio, sectionData) {
             contextDelete.classList.remove('disabled');
             if (currentRegions.length === 0) contextDownload.classList.remove('disabled');
          }
-         if (selectionContainsConflict) { // TODO: needs work
+         if (selectionContainsConflict) {
             contextLock.classList.add('disabled');
          }
          if (dualMode) { // manipulate context texts
@@ -1848,9 +1837,7 @@ function loadAudio(audio, sectionData) {
             showAudioLoader();
             if (canvasImages[selectedVersions[0]]) { // if waveform image exists in cache
                drawImageOnWaveform(canvasImages[selectedVersions[0]]);
-               // hideAudioLoader();
             } 
-            // else showAudioLoader();
             let url = gs.variables.metadataServerURL + "?a=get-archives-assocfile&site=" + gs.xsltParams.site_name + 
                         "&c=" + gs.cgiParams.c + "&d=" + gs.cgiParams.d + "&assocname=" + gs.documentMetadata.Audio;
             if (selectedVersions[0] !== "latest") {
@@ -1866,9 +1853,7 @@ function loadAudio(audio, sectionData) {
             showAudioLoader();
             if (canvasImages[selectedVersions[1]]) { 
                drawImageOnWaveform(canvasImages[selectedVersions[1]]);
-               // hideAudioLoader();
             } 
-            // else showAudioLoader();
             let url = gs.variables.metadataServerURL + "?a=get-archives-assocfile&site=" + gs.xsltParams.site_name + 
                         "&c=" + gs.cgiParams.c + "&d=" + gs.cgiParams.d + "&assocname=" + gs.documentMetadata.Audio;
             if (selectedVersions[1] !== "latest") {
@@ -2043,7 +2028,6 @@ function loadAudio(audio, sectionData) {
             document.getElementById("filter-max-label").innerText = minutize(longestDuration, true) + "s";
             speakerSet.tempSpeakerObjects = cloneSpeakerObjectArray(speakerSet.speakerObjects);
             populateChaptersAndRegions(speakerSet); // draw on waveform
-            // if (!speakerSet.isSecondary || forcePopulate) populateChaptersAndRegions(speakerSet); // prevents secondary set being drawn on first load
             resetUndoStates(); // undo stack init
             checkCSVForConflict(selectedVersions[speakerSet.isSecondary ? 1 : 0], data); 
          }
@@ -2059,7 +2043,7 @@ function loadAudio(audio, sectionData) {
       // this colour scheme is designed for qualitative data
       if (regionColourSet.length < 1) {
          for (let i = 0; i < data.uniqueSpeakers.length; i++) { // not tested in cases where there are more than 8 speakers!!
-            const adjIdx = i%8;
+            const adjIdx = i%7;
             regionColourSet[adjIdx] = { name: data.uniqueSpeakers[i], colour: colourbrewerSet[adjIdx] }
          }
       }
@@ -2105,7 +2089,7 @@ function loadAudio(audio, sectionData) {
          if (regionColourSet.find(item => item.name === data.tempSpeakerObjects[i].speaker)) {
             regColour = regionColourSet.find(item => item.name === data.tempSpeakerObjects[i].speaker).colour;
          } else {
-            regionColourSet.push({ name: data.tempSpeakerObjects[i].speaker, colour: colourbrewerSet[(i+1)%8]});
+            regionColourSet.push({ name: data.tempSpeakerObjects[i].speaker, colour: colourbrewerSet[(i+1)%7]});
             regColour = regionColourSet.at(-1).colour;
          }
 
@@ -2119,7 +2103,6 @@ function loadAudio(audio, sectionData) {
                label: speakerName,
             },
             color: regColour + regionTransparency,
-            // ...(selected) && {color: "rgba(255,50,50,0.5)"}, // removed for readability
          });
          if (selected) associatedReg.color = "rgba(255,50,50,0.5)";
          data.tempSpeakerObjects[i].region = associatedReg;
@@ -2255,10 +2238,10 @@ function loadAudio(audio, sectionData) {
    function regionEnter(region) {
       if (isCurrentRegion(region) || isInCurrentRegions(region)) {
          region.update({ color: "rgba(255, 50, 50, 0.5)" });
-         console.log('regionEnter: set to red')
+         // console.log('regionEnter: set to red')
       } else {
          region.update({ color: "rgba(255, 255, 255, 0.3)" });
-         console.log('regionEnter: set to grey')
+         // console.log('regionEnter: set to grey')
       }
       const currRegion = currSpeakerSet.tempSpeakerObjects[getIndexOfRegion(region)];
       if (editMode && currRegion) {
@@ -2276,16 +2259,13 @@ function loadAudio(audio, sectionData) {
       if (itemType == "chapter" && region) {
          if (isCurrentRegion(region) || isInCurrentRegions(region)) {
             region.update({ color: "rgba(255, 50, 50, 0.5)" });
-         // } else if (!(wavesurfer.getCurrentTime() + 0.1 < region.end && wavesurfer.getCurrentTime() > region.start)) {
          } else {
             let index = region.id.replace("region", "");
             if (regionColourSet.find(item => item.name === currSpeakerSet.tempSpeakerObjects[index].speaker)) {
                region.update({ color: regionColourSet.find(item => item.name === currSpeakerSet.tempSpeakerObjects[index].speaker).colour + regionTransparency });
-               console.log('regionLeave: set to existing colour')
             } else {
-               regionColourSet.push({ name: currSpeakerSet.tempSpeakerObjects[index].speaker, colour: colourbrewerSet[(index+1)%8]});
+               regionColourSet.push({ name: currSpeakerSet.tempSpeakerObjects[index].speaker, colour: colourbrewerSet[(index+1)%7]});
                region.update({ color: regionColourSet.at(-1).colour + regionTransparency });
-               console.log('regionLeave: set to new colour')
             }
          }
          if (region.element.getElementsByTagName("img").length > 0 && !isCurrentRegion(region) && !isInCurrentRegions(region)) {
@@ -2297,7 +2277,6 @@ function loadAudio(audio, sectionData) {
          }
       } else if (region) {
          region.update({ color: "rgba(255, 255, 255, 0.1)" });
-         console.log('regionLeave: set to dark grey')
       }
    }
 
@@ -2378,7 +2357,7 @@ function loadAudio(audio, sectionData) {
       else { currSpeakerSet = primarySet; swapCarets(true) }
       editsMade = true;
       currentRegion = region;
-      wavesurfer.backend.seekTo(region.start);
+      wavesurfer.setCurrentTime(region.start);
       let regionIndex = getCurrentRegionIndex();
       currentRegion.speaker = currSpeakerSet.tempSpeakerObjects[regionIndex].speaker;
       currSpeakerSet.tempSpeakerObjects[regionIndex].region = region;
@@ -2478,7 +2457,6 @@ function loadAudio(audio, sectionData) {
          saveButton.classList.add("disabled");
       }
       if (changeAllCheckbox.checked) {
-         // changeAllLabel.innerHTML = "Change all (x" + currentRegions.length + ")";
          disableStartEndInputs();
       }
       if (currentRegion && currentRegion.speaker != "") {
@@ -2496,7 +2474,6 @@ function loadAudio(audio, sectionData) {
    * Adds a new region to the waveform at the current caret location with the speaker name "NEW_SPEAKER"
    */
    function createNewRegion() { // adds a new region to the waveform
-   console.log(currSpeakerSet.tempSpeakerObjects)
       setChapterSearch("");
       const speaker = "NEW_SPEAKER"; // default name
       if (!currSpeakerSet.uniqueSpeakers.includes(speaker)) { currSpeakerSet.uniqueSpeakers.push(speaker) }
@@ -2703,11 +2680,6 @@ function loadAudio(audio, sectionData) {
    */
    function selectAllCheckboxChanged(skipUndoState) { // "Change all" toggled
       if (changeAllCheckbox.checked) {
-         // **** Have decided to suppress auto zoom out on select all
-         // if (!isZooming) {
-         //    tempZoomSave = zoomSlider.value;
-         //    zoomTo(1); // zoom out to encompass all selected regions
-         // }
          let uniqueSelectedSpeakers;
          if (currentRegions && currentRegions.length > 0) { // if more than one region selected
             uniqueSelectedSpeakers = [... new Set(currentRegions.map(a => a.speaker))]; // gets unique speakers in currentRegions
@@ -2721,10 +2693,6 @@ function loadAudio(audio, sectionData) {
             }
          }
       } else {
-         // **** Have decided to suppress auto zoom out on select all
-         // if (!isZooming) {
-         //    zoomTo(tempZoomSave / 4);  // zoom back in to previous level
-         // }
          currentRegions = []; // this will lose track of previously selected region*s*
       }
       reloadRegionsAndChapters();
@@ -2793,12 +2761,6 @@ function loadAudio(audio, sectionData) {
    function saveRegionChanges() { // saves tempSpeakerObjects to speakerObjects
       if (!saveButton.classList.contains("disabled")) {
          toggleSavePopup();
-         // old save functionality
-         // currSpeakerSet.speakerObjects = cloneSpeakerObjectArray(currSpeakerSet.tempSpeakerObjects);
-         // editsMade = false;
-         // removeCurrentRegion();
-         // reloadRegionsAndChapters();
-         // console.log("saved changes.");
       }
    }
 
@@ -2873,12 +2835,8 @@ function loadAudio(audio, sectionData) {
          }
       });
 
-      console.log(tableSpeakerNames) // old
-      console.log(currSpeakerSet.uniqueSpeakers) // new
-
       for (const uniqueSpeaker of currSpeakerSet.uniqueSpeakers) {
          if (!tableSpeakerNames.includes(uniqueSpeaker)) {
-            // TODO: add speaker
             let newMetaTextbox = metadataTable.parentElement.getElementsByTagName("input")[0];
             newMetaTextbox.value = "SpeakerName"; // set metadata title
             newMetaTextbox.nextElementSibling.click(); // click 'add new metadata'
@@ -2897,24 +2855,7 @@ function loadAudio(audio, sectionData) {
          }
       }
       saveAndRebuild(true); 
-
-      // $.ajax({
-      //    type: "POST",
-      //    url: gs.xsltParams.library_name,
-      //    data: { "o" : "json", "a": "g", "rt": "r", "ro": "0", "s": "ModifyMetadata", "s1.collection": gs.cgiParams.c, "s1.site": gs.xsltParams.site_name, "s1.d": gs.cgiParams.d, 
-      //             "s1.a": "set-metadata-array", "s1.where": "archives|index", "s1.json": 
-      //                JSON.stringify([{"docid": gs.cgiParams.d, "metatable":[{"metaname":"SpeakerName", "metavals": currSpeakerSet.uniqueSpeakers}], "metamode":"override"}])
-      //          },
-      // }).then((out) => {
-      //    console.log(out.page.pageResponse.status.content)
-      //    if (out.page.pageResponse.status.code == GSSTATUS_SUCCESS) {
-      //       console.log('set-metadata-array success with status code: ' + out.page.pageResponse.status.code);
-      //       // buildCollections([gs.cgiParams.c], null, () => {
-      //       //    console.log("yay rebuilt!");
-      //       // });
-            
-      //    } 
-      // }, (error) => { console.log("set-metadata-array error:"); console.log(error); });
+      reloadVersionDropdown();
    }
 
    function speakerObjToCSVText() { // converts tempSpeakerObjects to csv-like string 
@@ -2958,7 +2899,6 @@ function loadAudio(audio, sectionData) {
       }
       if (currentRegions.length < 1) { 
          removeButton.innerHTML = "Remove Selected Region";
-         // enableStartEndInputs();
       } else {
          removeButton.innerHTML = "Remove Selected Regions (x" + currentRegions.length + ")";
          const uniqueSelectedSpeakers = [... new Set(currentRegions.map(a => a.speaker))]; // gets unique speakers in currentRegions
