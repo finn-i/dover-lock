@@ -4,6 +4,8 @@
 <!-- Project Description -->
 Core and utility scripts contributing to the retention of user edits when combining diarization outputs for error rate improvements. Additionally includes code which builds an enriched audio player and diarization editor. 
 
+[Screenshot of Diarization Editor](https://i.imgur.com/xoeLleM.png)
+
 <!-- Files -->
 ## [core.css](core.css)
 Primary CSS file containing styling rules for a digital library collection containing audio.
