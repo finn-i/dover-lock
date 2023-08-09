@@ -88,8 +88,10 @@ sub run_dover
 
 	# Call DOVER-Lock with newly generated files 
 	my $dover_result = "dover_output.rttm";
+	my $dover_tmp_dir = "tmp/DOVER-Lock/$$"; # tmp/DOVER-Lock/PID
 	# my $cmd = "dover dover_input_* > $dover_result";
-	my $cmd = "/Scratch/fwi1/wavesurfer-experiments/dover/scripts/dover dover_input_* > $dover_result";
+	# my $cmd = "/Scratch/fwi1/wavesurfer-experiments/dover/scripts/dover dover_input_* > $dover_result";
+	my $cmd = "dover-lock -tmpdir $dover_tmp_dir dover_input_* > $dover_result";
 	print STDERR "\n\n*****\n\n CMD=\n$cmd \n\n*****\n\n";
 	my $status = system($cmd);
 	print STDERR "\n\n*****\n\n command status=\n$status \n\n*****\n\n";
