@@ -243,7 +243,7 @@ cat -n $mapped_rttms | # -n numbers all output lines [idx]
 		cat -n $mapped_rttms | 
 			while read idx2 weight rttm2; do
 				if [ $idx1 -lt $idx2 ]; then
-					$bindir/detect-lock-overlaps $rttm1 $rttm2
+					$bindir/detect-lock-overlaps "$tmpdir/overlaps" $rttm1 $rttm2
 				fi
 			done
 	done
@@ -329,4 +329,4 @@ printf "%s\n" "$unique_speakers" | tr ' ' '\n' | sort -u >> $output_unique
 #
 # DOVER's speaker voting
 #
-$bindir/dover-speaker-voting debug=1 total="$total_weight" split_ties=$split_ties $tmpdir/collated 2>$tmpdir/collated.votes
+$bindir/dover-speaker-voting $output_unique $input_rttms debug=1 total="$total_weight" split_ties=$split_ties $tmpdir/collated 2>$tmpdir/collated.votes

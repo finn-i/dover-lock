@@ -15,8 +15,8 @@ BEGIN {
 
 	noutputs = 0;
 
-	unique_speakers = "DOVER/unique-speakers"
-	input_rttms = "DOVER/input.rttm.list"
+	unique_speakers = ARGV[1];
+	input_rttms = ARGV[2];
 }
 
 #

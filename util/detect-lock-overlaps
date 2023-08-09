@@ -7,12 +7,13 @@
 
 BEGIN {
   FS = " "; # Field separator
-  output_file = "DOVER/overlaps"; 
+  output_file = ARGV[1]; 
+  # output_file = "DOVER/overlaps"; 
   count = 0; # Monitors while loop index
 }
 
 # Loop through the records in the first file
-FILENAME == ARGV[1] {
+FILENAME == ARGV[2] {
   first_file_length = NR; # Number of records
   while (getline line < FILENAME > 0) {
     nf = split(line, fields); 
@@ -30,7 +31,7 @@ FILENAME == ARGV[1] {
 }
 
 # Loop through the records in the second file
-FILENAME == ARGV[2] {
+FILENAME == ARGV[3] {
   o_count = 0;
   while (getline line < FILENAME > 0) {
     nf = split(line, fields);
@@ -69,31 +70,31 @@ FILENAME == ARGV[2] {
             gsub(/sys[0-9]:/, "", first_spkr);
             gsub(/sys[0-9]:/, "", second_spkr);
             if (first_spkr == second_spkr) { # If speaker names match, ensure NAME/NAME becomes NAME
-              print "CONFLICT", ARGV[1], start_time[k], duration[k], 
+              print "CONFLICT", ARGV[2], start_time[k], duration[k], 
                 "conflict:"speaker[k], min_start, max_duration >> output_file;
             } else {
               if (both_spkr_locked && !both_dur_locked) { # Retain original start/stop if just speaker locked
-                print "CONFLICT", ARGV[1], start_time[k], duration[k], 
+                print "CONFLICT", ARGV[2], start_time[k], duration[k], 
                   "conflict:"speaker[k]"/"other_speaker[o_count], start_time[k], end_time[k]-start_time[k] >> output_file;
-                print ARGV[2], other_start_time[o_count], other_duration[o_count] >> output_file; # Remove extra region (has been merged)
+                print ARGV[3], other_start_time[o_count], other_duration[o_count] >> output_file; # Remove extra region (has been merged)
               } else {
-                print "CONFLICT", ARGV[1], start_time[k], duration[k], 
+                print "CONFLICT", ARGV[2], start_time[k], duration[k], 
                   "conflict:"speaker[k]"/"other_speaker[o_count], min_start, max_duration >> output_file;
-                print ARGV[2], other_start_time[o_count], other_duration[o_count] >> output_file; # Remove extra region (has been merged)
+                print ARGV[3], other_start_time[o_count], other_duration[o_count] >> output_file; # Remove extra region (has been merged)
               }
             }
           } else if (dur_locked[k] == 1) { # Flag overlapping region for removal
-            print ARGV[2], other_start_time[o_count], other_duration[o_count] >> output_file;
-            print "DUR_LOCKED", ARGV[1], start_time[k], duration[k], speaker[k] >> output_file; # TODO: ensure entry doesn't already exist
+            print ARGV[3], other_start_time[o_count], other_duration[o_count] >> output_file;
+            print "DUR_LOCKED", ARGV[2], start_time[k], duration[k], speaker[k] >> output_file; # TODO: ensure entry doesn't already exist
           } else if (other_dur_locked[o_count] == 1) { # Flag overlapping region for removal
-            print ARGV[1], start_time[k], duration[k] >> output_file;
-            print "DUR_LOCKED", ARGV[2], other_start_time[o_count], other_duration[o_count], other_speaker[o_count] >> output_file;
+            print ARGV[2], start_time[k], duration[k] >> output_file;
+            print "DUR_LOCKED", ARGV[3], other_start_time[o_count], other_duration[o_count], other_speaker[o_count] >> output_file;
           }
           # Flag regions for rename, ensures speaker priority
           if (spkr_locked[k] == 1 && other_spkr_locked[o_count] == 0) { 
-            print "RENAME", ARGV[2], other_start_time[o_count], other_duration[o_count], speaker[k] >> output_file;
+            print "RENAME", ARGV[3], other_start_time[o_count], other_duration[o_count], speaker[k] >> output_file;
           } else if (other_spkr_locked[o_count] == 1 && spkr_locked[k] == 0) {
-            print "RENAME", ARGV[1], start_time[k], duration[k], other_speaker[o_count] >> output_file;
+            print "RENAME", ARGV[2], start_time[k], duration[k], other_speaker[o_count] >> output_file;
           }
         }
       }
