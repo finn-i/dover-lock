@@ -713,6 +713,7 @@ function loadAudio(audio, sectionData) {
             timelineMenuRegionConflict.classList.add('disabled');
             timelineMenuSpeakerConflict.classList.add('disabled');
          } else {
+            $("version-select-menu-item").remove(); // clear out any existing items to prevent duplicates
             timelineMenuDualMode.classList.remove('disabled');
             if (dualMode) {
                timelineMenuRegionConflict.classList.remove('disabled');
@@ -733,6 +734,7 @@ function loadAudio(audio, sectionData) {
                   url: gs.variables.metadataServerURL,
                   data: dataObj,
                   dataType: "text",
+                  cache: false,
                }).then(comment => {
                   if (data.includes("ERROR")) {
                      console.log("get-archives-metadata Error: " + data);
@@ -741,7 +743,16 @@ function loadAudio(audio, sectionData) {
                      if (comment.length < 1) menuItem.title = "No commit message found!";
                      else menuItem.title = "Commit message: " + comment;
                      versionSelectMenu.append(menuItem);
-                     [...versionSelectMenu.children].sort((a,b) => a.innerText>b.innerText?1:-1).forEach(n=>versionSelectMenu.appendChild(n)); // sort alphabetically
+                     [...versionSelectMenu.children].sort((a,b) => {
+                        a.innerText.match(/\d/g).join("") > b.innerText.match(/\d/g).join("")?1:-1; // sort numerically + put latest at top
+                     }).forEach(n => versionSelectMenu.appendChild(n));
+                     for (const element of versionSelectMenu.children) {
+                        if (element.innerText.toLowerCase() == "latest") {
+                           const backup = element;
+                           element.remove();
+                           versionSelectMenu.prepend(backup);
+                        }
+                     }
                   }
                }, (error) => { console.log("get-archives-metadata error:"); console.log(error); });
                $.ajax({ // get conflict status of each version 
@@ -750,9 +761,12 @@ function loadAudio(audio, sectionData) {
                   dataType: "text",
                }).then(csvData => {
                   setTimeout(()=>{ // timeout is needed for some reason ?? TODO
-                     if (version === "latest") checkCSVForConflict("latest", "", primarySet.tempSpeakerObjects);
-                     else checkCSVForConflict(version, csvData);
-                  }, 1000)
+                     if (version === "latest") {
+                        checkCSVForConflict("latest", null, primarySet.tempSpeakerObjects);
+                     } else {
+                        checkCSVForConflict(version, csvData);
+                     }
+                  }, 1000);
                }, (error) => { console.log("get-archives-metadata error:"); console.log(error); });
             }
          }
@@ -766,9 +780,10 @@ function loadAudio(audio, sectionData) {
     * @param {*} spkrObj If CSV data is not given, speakerObjects are instead checked
     */
    function checkCSVForConflict(version, csvData, spkrObj) {  
-      if (editMode && previousVersionsExist) {
+      // if (editMode && previousVersionsExist) {
+      if (previousVersionsExist) {
          let hasConflict = false;
-         if (csvData !== "") {
+         if (csvData !== null) {
             let dataLines = csvData.split(/\r\n|\n/);
             for (const line of dataLines) {
                const speaker = line.split(",")[0];
@@ -1502,7 +1517,7 @@ function loadAudio(audio, sectionData) {
          let split_line = line.split(" ");
          if (split_line[0].length > 0) { // ensure line is not empty
             // TODO: locked may need binary / 0-1 conversion
-            output.push({start: split_line[3], end: parseFloat(split_line[3]) + parseFloat(split_line[4]), speaker: split_line[7], locked: split_line[9]})
+            output.push({start: split_line[3], end: parseFloat(split_line[3]) + parseFloat(split_line[4]), speaker: split_line[7], locked: (split_line[9] == 0)?false:true});
          }
       }
       return output;
@@ -2635,7 +2650,7 @@ function loadAudio(audio, sectionData) {
                drawConflictMarker(regElement);
             }
             updateChapterConflictIcons();
-            checkCSVForConflict(selectedVersions[currSpeakerSet.isSecondary ? 1 : 0], "", currSpeakerSet.tempSpeakerObjects);
+            checkCSVForConflict(selectedVersions[currSpeakerSet.isSecondary ? 1 : 0], null, currSpeakerSet.tempSpeakerObjects);
             updateUniqueSpeakers();
          } else { console.log("no region selected") }
       } else { console.log("no text in speaker input"); speakerInput.style.outline = "2px solid firebrick"; }
