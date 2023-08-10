@@ -1484,7 +1484,7 @@ function loadAudio(audio, sectionData) {
       for (const entry of obj) {
          const regex = new RegExp("SPEAKER_\\d{2}");
          let speaker_lock = !regex.test(entry.speaker);
-         let line = ["SPEAKER", gs.documentMetadata.Title.replace(" ", "-"), "1", parseFloat(entry.start).toFixed(2), parseFloat(entry.end-entry.start).toFixed(2), 
+         let line = ["SPEAKER", gs.documentMetadata.Title.replaceAll(" ", "-"), "1", parseFloat(entry.start).toFixed(2), parseFloat(entry.end-entry.start).toFixed(2), 
             "<NA>","<NA>", entry.speaker, "<NA>", entry.locked?1:0, speaker_lock?1:0, (entry.locked || speaker_lock)?1:0].join(" ");
          output = output.concat("\n", line);
       }
