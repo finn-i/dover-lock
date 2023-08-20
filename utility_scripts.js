@@ -703,6 +703,7 @@ function loadAudio(audio, sectionData) {
          cache: false,
          dataType: "json",
       }).then(data => {
+         $("version-select-menu-item").remove(); // clear out any existing items to prevent duplicates
          if (data.includes("ERROR")) {
             console.log("get-fldv-info Error: " + data);
          } else if (data.length === 0) {
@@ -713,7 +714,7 @@ function loadAudio(audio, sectionData) {
             timelineMenuRegionConflict.classList.add('disabled');
             timelineMenuSpeakerConflict.classList.add('disabled');
          } else {
-            $("version-select-menu-item").remove(); // clear out any existing items to prevent duplicates
+            previousVersionsExist = true;
             timelineMenuDualMode.classList.remove('disabled');
             if (dualMode) {
                timelineMenuRegionConflict.classList.remove('disabled');
@@ -727,6 +728,7 @@ function loadAudio(audio, sectionData) {
                let text = version.includes("nminus") ? version.replace("nminus-", "Previous(") + ")" : version;
                menuItem.innerText = text.charAt(0).toUpperCase() + text.slice(1);
                menuItem.addEventListener('click', versionClicked);
+               versionSelectMenu.append(menuItem);
                let dataObj = { a: 'get-archives-metadata', site: gs.xsltParams.site_name, c: gs.cgiParams.c, d: gs.cgiParams.d, metaname: "commitmessage" };
                if (version != "latest") Object.assign(dataObj, {dv: version});
                $.ajax({ // get commitmessage metadata to show as hover tooltip
@@ -742,17 +744,6 @@ function loadAudio(audio, sectionData) {
                      $("#track-set-label-top").fadeIn(100);
                      if (comment.length < 1) menuItem.title = "No commit message found!";
                      else menuItem.title = "Commit message: " + comment;
-                     versionSelectMenu.append(menuItem);
-                     [...versionSelectMenu.children].sort((a,b) => {
-                        a.innerText.match(/\d/g).join("") > b.innerText.match(/\d/g).join("")?1:-1; // sort numerically + put latest at top
-                     }).forEach(n => versionSelectMenu.appendChild(n));
-                     for (const element of versionSelectMenu.children) {
-                        if (element.innerText.toLowerCase() == "latest") {
-                           const backup = element;
-                           element.remove();
-                           versionSelectMenu.prepend(backup);
-                        }
-                     }
                   }
                }, (error) => { console.log("get-archives-metadata error:"); console.log(error); });
                $.ajax({ // get conflict status of each version 
@@ -1446,6 +1437,8 @@ function loadAudio(audio, sectionData) {
          // build both inputs
          let primaryRTTM = speakerObjectToRTTM(primarySet.tempSpeakerObjects);
          let secondaryRTTM = speakerObjectToRTTM(secondarySet.tempSpeakerObjects);
+         console.log(primaryRTTM)
+         console.log(secondaryRTTM)
          const doverServerURL = "cgi-bin/dover-server.pl";
          $.ajax({
             type: "POST",
@@ -1462,6 +1455,7 @@ function loadAudio(audio, sectionData) {
                   if (out.page.pageResponse.status.code == GSSTATUS_SUCCESS) { 
                      console.log('fldv inc success with status code: ' + out.page.pageResponse.status.code);
                      // set primarySpeakerSet (and current set) to dover_output
+                     console.log(dover_output)
                      primarySet = {};
                      primarySet.isSecondary = false;
                      primarySet.speakerObjects = RTTMToSpeakerObject(dover_output);
@@ -1473,6 +1467,7 @@ function loadAudio(audio, sectionData) {
                         // switch out of dual-mode
                         secondaryLoaded = false;
                         initialLoad = false;
+                        previousVersionsExist = true; 
                         dualModeChanged(true, "false");
                         hideAudioLoader();
                         console.log("tracks merged.");
