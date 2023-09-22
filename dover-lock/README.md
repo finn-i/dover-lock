@@ -16,3 +16,6 @@ Last step in DOVER-Lock process. Consensus voting of label-mapped inputs. Additi
 
 ## [md-eval.pl](md-eval.pl)
 Calculates DER between inputs. Used for mapping speaker labels to a common namespace.
+
+## [stat-dist](stat-dist)
+Computes miscellaneous stats for a distribution.
