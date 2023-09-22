@@ -17,5 +17,8 @@ Primary XSL file holding relevant DOM elements and HTML for the enriched audio p
 Primary JavaScript file containing the bulk of the audio player / diarization editor logic. Allows for the actuation of DOVER-Lock script.
 
 <!-- Directories -->
+## [dover-lock/](dover-lock)
+Contains DOVER-Lock scripts. Builds upon the existing DOVER program, allowing for retention of user edits in diarisation input streams through the implementation of locked regions.
+
 ## [util/](util)
 Contains various utility scripts and files developed at various stages of the thesis. Each file is described in more detail in the directory.
